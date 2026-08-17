@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日桶 · Daily Bin</title>
+<style>
+:root {
+  --bg: #F7F5F0;
+  --text: #1A1A1A;
+  --accent: #8B6F47;
+  --line: rgba(139, 111, 71, 0.25);
+  --muted: rgba(26, 26, 26, 0.45);
+  --hover: rgba(139, 111, 71, 0.08);
+  --danger: #8B3A3A;
+  --input-bg: rgba(139, 111, 71, 0.04);
+}
+[data-theme="dark"] {
+  --bg: #111111;
+  --text: #E8E4DC;
+  --accent: #C4A96A;
+  --line: rgba(196, 169, 106, 0.3);
+  --muted: rgba(232, 228, 220, 0.4);
+  --hover: rgba(196, 169, 106, 0.1);
+  --danger: #C46A6A;
+  --input-bg: rgba(196, 169, 106, 0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Goudy Old Style", "Noto Serif SC", "Songti SC", Georgia, serif;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  transition: background 0.3s, color 0.3s;
+}
+
+#app {
+  width: 100%;
+  max-width: 640px;
+  padding: 32px 24px 48px;
+}
+
+/* 顶栏 */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.clock {
+  font-size: 32px;
+  font-weight: normal;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+.date {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 2px;
+  letter-spacing: 0.06em;
+}
+.top-actions {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+.top-actions button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.top-actions button:hover {
+  color: var(--text);
+}
+.top-actions button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* 主区域 */
+.main {
+  margin-top: 48px;
+}
+.prompt {
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  margin-bottom: 32px;
+}
+.input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+#entry-input {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+  padding: 8px 0;
+  outline: none;
+  letter-spacing: 0.03em;
+  transition: border-color 0.3s;
+}
+#entry-input:focus {
+  border-color: var(--accent);
+}
+#entry-input::placeholder {
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.btn-primary {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  padding: 10px 32px;
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s;
+}
+.btn-primary:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* 列表 */
+.divider {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 40px 0 24px;
+}
+.section-label {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+.entry-list {
+  list-style: none;
+}
+.entry-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(139, 111, 71, 0.1);
+}
+[data-theme="dark"] .entry-item {
+  border-bottom-color: rgba(196, 169, 106, 0.12);
+}
+.entry-time {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+  min-width: 44px;
+}
+.entry-text {
+  flex: 1;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.entry-delete {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.2s, color 0.2s;
+}
+.entry-delete:hover {
+  opacity: 1;
+  color: var(--danger);
+}
+.empty-hint {
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  padding: 16px 0;
+}
+
+/* 底部导航 */
+.footer-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  padding: 16px 0 20px;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  z-index: 10;
+  transition: background 0.3s;
+}
+.footer-nav button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  padding: 6px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.footer-nav button:hover {
+  color: var(--text);
+}
+.footer-nav button.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* 底部操作（在内容区底部） */
+.footer-actions {
+  display: flex;
+  gap: 20px;
+  margin-top: 32px;
+  padding-bottom: 60px;
+}
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.btn-text:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* 清点模式 */
+.review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.review-item .entry-text {
+  font-size: 17px;
+}
+.review-actions {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.review-actions button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 6px 18px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.review-actions .keep:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.review-actions .discard:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.review-actions .transfer:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--hover);
+}
+.review-actions .decided {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.review-done {
+  margin-top: 32px;
+}
+
+/* 随记板块 */
+#note-input {
+  background: var(--input-bg);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+  padding: 16px;
+  outline: none;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  transition: border-color 0.3s;
+}
+#note-input:focus {
+  border-color: var(--accent);
+}
+#note-input::placeholder {
+  color: var(--muted);
+}
+.note-group {
+  margin-bottom: 36px;
+}
+.note-date {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.note-item {
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(139, 111, 71, 0.1);
+}
+[data-theme="dark"] .note-item {
+  border-bottom-color: rgba(196, 169, 106, 0.12);
+}
+.note-time {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  display: block;
+}
+.note-text {
+  font-size: 16px;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.note-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+.note-actions button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  padding: 2px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.note-actions button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.note-actions .delete-note:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.note-edit-area {
+  background: var(--input-bg);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+  padding: 12px;
+  outline: none;
+  letter-spacing: 0.03em;
+  line-height: 1.6;
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  margin-top: 8px;
+}
+.note-edit-area:focus {
+  border-color: var(--accent);
+}
+.note-edit-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.note-edit-actions button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  padding: 4px 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.note-edit-actions .save-edit:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.note-edit-actions .cancel-edit:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* 历史 */
+.history-group {
+  margin-bottom: 32px;
+}
+.history-date {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.history-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  align-items: baseline;
+}
+.history-status {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  min-width: 36px;
+  color: var(--muted);
+}
+.history-status.kept {
+  color: var(--accent);
+}
+.history-status.discarded {
+  color: var(--danger);
+  opacity: 0.6;
+}
+.history-status.transferred {
+  color: var(--accent);
+  opacity: 0.8;
+}
+.history-item .entry-time {
+  min-width: 40px;
+}
+
+.hidden { display: none; }
+
+@media (max-width: 480px) {
+  #app { padding: 20px 16px 60px; }
+  .clock { font-size: 26px; }
+  .main { margin-top: 32px; }
+  .prompt { font-size: 17px; }
+  .footer-nav { gap: 32px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div>
+      <div class="clock" id="clock">00:00</div>
+      <div class="date" id="date"></div>
+    </div>
+    <div class="top-actions">
+      <button id="theme-btn" data-i18n="theme">夜间</button>
+      <button id="lang-btn">EN</button>
+    </div>
+  </div>
+
+  <!-- 主视图：桶 -->
+  <div id="main-view">
+    <div class="main">
+      <div class="prompt" data-i18n="prompt">今天有什么想记的？</div>
+      <div class="input-row">
+        <input type="text" id="entry-input" data-i18n-placeholder="placeholder" placeholder="想到什么，扔进来" autocomplete="off">
+        <button class="btn-primary" id="add-btn" data-i18n="add">扔进去</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section-label" id="today-label" data-i18n="today_label">今日</div>
+    <ul class="entry-list" id="today-list"></ul>
+    <div class="empty-hint hidden" id="empty-hint" data-i18n="empty">还没有东西。扔点什么进来。</div>
+
+    <div class="footer-actions">
+      <button class="btn-text" id="review-btn" data-i18n="review">睡前清点</button>
+      <button class="btn-text" id="history-btn" data-i18n="history">历史</button>
+      <button class="btn-text" id="export-btn" data-i18n="export">导出</button>
+      <button class="btn-text" id="import-btn" data-i18n="import">导入</button>
+    </div>
+  </div>
+
+  <!-- 随记视图 -->
+  <div id="note-view" class="hidden">
+    <div class="main">
+      <div class="prompt" data-i18n="note_prompt">写点什么…</div>
+      <div class="input-row">
+        <textarea id="note-input" data-i18n-placeholder="note_placeholder" placeholder="随记，可以写长一点"></textarea>
+        <button class="btn-primary" id="note-add-btn" data-i18n="note_add">放下</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section-label" data-i18n="note_label">随记</div>
+    <div id="note-list"></div>
+    <div class="empty-hint hidden" id="note-empty" data-i18n="note_empty">还没有随记。</div>
+  </div>
+
+  <!-- 清点视图 -->
+  <div id="review-view" class="hidden">
+    <div class="main">
+      <div class="prompt" data-i18n="review_title">睡前清点</div>
+      <div class="section-label" id="review-count"></div>
+      <div id="review-list"></div>
+      <div class="review-done">
+        <button class="btn-primary" id="review-finish-btn" data-i18n="finish">完成清点</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 历史视图 -->
+  <div id="history-view" class="hidden">
+    <div class="main">
+      <div class="prompt" data-i18n="history_title">历史</div>
+      <div id="history-list"></div>
+      <div class="empty-hint hidden" id="history-empty" data-i18n="history_empty">还没有历史记录。</div>
+    </div>
+    <div class="footer-actions">
+      <button class="btn-text" id="history-clear-btn" data-i18n="clear_history">清空历史</button>
+    </div>
+  </div>
+
+  <!-- 底部导航 -->
+  <div class="footer-nav">
+    <button id="nav-bin" class="active" data-i18n="nav_bin">桶</button>
+    <button id="nav-note" data-i18n="nav_note">记</button>
+  </div>
+
+  <!-- 隐藏的文件导入 -->
+  <input type="file" id="import-file" accept=".json,.txt" style="display:none">
+
+</div>
+
+<script>
+(function() {
+  // ========== 状态 ==========
+  const STORAGE_KEY = 'daily_bin_data';
+  const PREFS_KEY = 'daily_bin_prefs';
+
+  let entries = [];      // { id, text, time, date, status } status: 'pending' | 'kept' | 'discarded' | 'transferred'
+  let notes = [];        // { id, text, time, date }
+  let prefs = { theme: 'light', lang: 'zh' };
+  let currentView = 'main'; // 'main' | 'note' | 'review' | 'history'
+  let editingNoteId = null;
+
+  // ========== 工具 ==========
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+      entries = data.entries || [];
+      notes = data.notes || [];
+    } catch(e) { entries = []; notes = []; }
+  }
+  function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries, notes }));
+  }
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (raw) prefs = { ...prefs, ...JSON.parse(raw) };
+    } catch(e) {}
+  }
+  function savePrefs() {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  }
+
+  function todayStr() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  function timeStr() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  function todayEntries() {
+    const t = todayStr();
+    return entries.filter(e => e.date === t && e.status === 'pending');
+  }
+  function historyGroups() {
+    const groups = {};
+    entries.forEach(e => {
+      if (e.status !== 'pending') {
+        if (!groups[e.date]) groups[e.date] = [];
+        groups[e.date].push(e);
+      }
+    });
+    return Object.keys(groups).sort().reverse().map(k => ({ date: k, items: groups[k] }));
+  }
+  function noteGroups() {
+    const groups = {};
+    notes.forEach(n => {
+      if (!groups[n.date]) groups[n.date] = [];
+      groups[n.date].push(n);
+    });
+    return Object.keys(groups).sort().reverse().map(k => ({ date: k, items: groups[k] }));
+  }
+
+  // ========== 国际化 ==========
+  const I18N = {
+    zh: {
+      theme_dark: '夜间',
+      theme_light: '日间',
+      prompt: '今天有什么想记的？',
+      placeholder: '想到什么，扔进来',
+      add: '扔进去',
+      today_label: '今日',
+      empty: '还没有东西。扔点什么进来。',
+      review: '睡前清点',
+      history: '历史',
+      export: '导出',
+      import: '导入',
+      review_title: '睡前清点',
+      finish: '完成清点',
+      back: '返回',
+      history_title: '历史',
+      history_empty: '还没有历史记录。',
+      clear_history: '清空历史',
+      review_count: function(n) { return `今天扔进来了 ${n} 条`; },
+      keep: '留下',
+      discard: '删掉',
+      transfer: '转入随记',
+      kept: '留',
+      discarded: '删',
+      transferred: '转',
+      confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
+      exported: '已导出',
+      import_error: '导入失败，请检查文件格式。',
+      nav_bin: '桶',
+      nav_note: '记',
+      note_prompt: '写点什么…',
+      note_placeholder: '随记，可以写长一点',
+      note_add: '放下',
+      note_label: '随记',
+      note_empty: '还没有随记。',
+      edit: '编辑',
+      delete: '删除',
+      save: '保存',
+      cancel: '取消'
+    },
+    en: {
+      theme_dark: 'Dark',
+      theme_light: 'Light',
+      prompt: 'What do you want to note today?',
+      placeholder: 'Throw something in',
+      add: 'Throw in',
+      today_label: 'Today',
+      empty: 'Nothing yet. Throw something in.',
+      review: 'Review',
+      history: 'History',
+      export: 'Export',
+      import: 'Import',
+      review_title: 'Nightly Review',
+      finish: 'Finish Review',
+      back: 'Back',
+      history_title: 'History',
+      history_empty: 'No history yet.',
+      clear_history: 'Clear History',
+      review_count: function(n) { return `${n} item${n !== 1 ? 's' : ''} thrown in today`; },
+      keep: 'Keep',
+      discard: 'Discard',
+      transfer: 'To Notes',
+      kept: 'Kept',
+      discarded: 'Discarded',
+      transferred: 'Noted',
+      confirm_clear: 'Clear all history? This cannot be undone.',
+      exported: 'Exported',
+      import_error: 'Import failed. Check file format.',
+      nav_bin: 'Bin',
+      nav_note: 'Notes',
+      note_prompt: 'Write something…',
+      note_placeholder: 'A note, can be longer',
+      note_add: 'Put down',
+      note_label: 'Notes',
+      note_empty: 'No notes yet.',
+      edit: 'Edit',
+      delete: 'Delete',
+      save: 'Save',
+      cancel: 'Cancel'
+    }
+  };
+
+  function t(key) {
+    const dict = I18N[prefs.lang] || I18N.zh;
+    const val = dict[key];
+    if (typeof val === 'function') return val;
+    return val || key;
+  }
+  function tf(key, n) {
+    const dict = I18N[prefs.lang] || I18N.zh;
+    const val = dict[key];
+    if (typeof val === 'function') return val(n);
+    return val || key;
+  }
+
+  // ========== DOM ==========
+  const $ = id => document.getElementById(id);
+  const clockEl = $('clock'), dateEl = $('date');
+  const mainView = $('main-view'), noteView = $('note-view'), reviewView = $('review-view'), historyView = $('history-view');
+  const entryInput = $('entry-input');
+  const todayList = $('today-list'), emptyHint = $('empty-hint');
+  const reviewList = $('review-list'), reviewCount = $('review-count');
+  const historyList = $('history-list'), historyEmpty = $('history-empty');
+  const noteList = $('note-list'), noteEmpty = $('note-empty');
+  const noteInput = $('note-input');
+  const themeBtn = $('theme-btn'), langBtn = $('lang-btn');
+  const navBin = $('nav-bin'), navNote = $('nav-note');
+
+  // ========== 时钟 ==========
+  function updateClock() {
+    const d = new Date();
+    clockEl.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const weekdaysZh = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const weekdaysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthsZh = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (prefs.lang === 'zh') {
+      dateEl.textContent = `${d.getFullYear()}年${monthsZh[d.getMonth()]}${d.getDate()}日 ${weekdaysZh[d.getDay()]}`;
+    } else {
+      dateEl.textContent = `${weekdaysEn[d.getDay()]}, ${monthsEn[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    }
+  }
+
+  // ========== 主题 ==========
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', prefs.theme);
+    themeBtn.textContent = prefs.theme === 'light' ? t('theme_dark') : t('theme_light');
+  }
+
+  // ========== 语言 ==========
+  function applyLang() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const val = t(key);
+      if (typeof val !== 'function') el.textContent = val;
+    });
+    const phKey = entryInput.getAttribute('data-i18n-placeholder');
+    if (phKey) entryInput.placeholder = t(phKey);
+    const notePhKey = noteInput.getAttribute('data-i18n-placeholder');
+    if (notePhKey) noteInput.placeholder = t(notePhKey);
+    langBtn.textContent = prefs.lang === 'zh' ? 'EN' : '中文';
+    updateClock();
+    applyTheme();
+    renderAll();
+  }
+
+  // ========== 渲染 ==========
+  function renderAll() {
+    renderTodayList();
+    renderReviewList();
+    renderHistoryList();
+    renderNoteList();
+  }
+
+  function renderTodayList() {
+    const items = todayEntries();
+    todayList.innerHTML = '';
+    items.sort((a, b) => a.time.localeCompare(b.time)).forEach(e => {
+      const li = document.createElement('li');
+      li.className = 'entry-item';
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'entry-time';
+      timeSpan.textContent = e.time;
+      
+      const textSpan = document.createElement('span');
+      textSpan.className = 'entry-text';
+      textSpan.textContent = e.text;
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'entry-delete';
+      delBtn.textContent = '×';
+      delBtn.title = prefs.lang === 'zh' ? '删除' : 'Delete';
+      delBtn.addEventListener('click', () => {
+        e.status = 'discarded';
+        saveData();
+        renderAll();
+      });
+      
+      li.appendChild(timeSpan);
+      li.appendChild(textSpan);
+      li.appendChild(delBtn);
+      todayList.appendChild(li);
+    });
+    
+    if (items.length === 0) {
+      emptyHint.classList.remove('hidden');
+    } else {
+      emptyHint.classList.add('hidden');
+    }
+    const label = $('today-label');
+    label.textContent = t('today_label') + (items.length > 0 ? ` · ${items.length}` : '');
+  }
+
+  function renderReviewList() {
+    const items = todayEntries();
+    reviewList.innerHTML = '';
+    reviewCount.textContent = tf('review_count', items.length);
+    
+    items.sort((a, b) => a.time.localeCompare(b.time)).forEach(e => {
+      const div = document.createElement('div');
+      div.className = 'review-item';
+      
+      const metaSpan = document.createElement('span');
+      metaSpan.className = 'entry-time';
+      metaSpan.textContent = e.time;
+      
+      const textSpan = document.createElement('span');
+      textSpan.className = 'entry-text';
+      textSpan.textContent = e.text;
+      
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'review-actions';
+      
+      const keepBtn = document.createElement('button');
+      keepBtn.className = 'keep';
+      keepBtn.textContent = t('keep');
+      keepBtn.addEventListener('click', () => {
+        e.status = 'kept';
+        saveData();
+        actionsDiv.querySelectorAll('button').forEach(b => b.classList.add('decided'));
+      });
+      
+      const transferBtn = document.createElement('button');
+      transferBtn.className = 'transfer';
+      transferBtn.textContent = t('transfer');
+      transferBtn.addEventListener('click', () => {
+        e.status = 'transferred';
+        notes.push({
+          id: uid(),
+          text: e.text,
+          time: e.time,
+          date: e.date
+        });
+        saveData();
+        actionsDiv.querySelectorAll('button').forEach(b => b.classList.add('decided'));
+      });
+      
+      const discardBtn = document.createElement('button');
+      discardBtn.className = 'discard';
+      discardBtn.textContent = t('discard');
+      discardBtn.addEventListener('click', () => {
+        e.status = 'discarded';
+        saveData();
+        actionsDiv.querySelectorAll('button').forEach(b => b.classList.add('decided'));
+      });
+      
+      actionsDiv.appendChild(keepBtn);
+      actionsDiv.appendChild(transferBtn);
+      actionsDiv.appendChild(discardBtn);
+      
+      div.appendChild(metaSpan);
+      div.appendChild(textSpan);
+      div.appendChild(actionsDiv);
+      reviewList.appendChild(div);
+    });
+  }
+
+  function renderHistoryList() {
+    const groups = historyGroups();
+    historyList.innerHTML = '';
+    
+    if (groups.length === 0) {
+      historyEmpty.classList.remove('hidden');
+    } else {
+      historyEmpty.classList.add('hidden');
+    }
+    
+    groups.forEach(g => {
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'history-group';
+      
+      const dateDiv = document.createElement('div');
+      dateDiv.className = 'history-date';
+      const parts = g.date.split('-');
+      const y = parts[0], m = parseInt(parts[1]), d = parseInt(parts[2]);
+      if (prefs.lang === 'zh') {
+        dateDiv.textContent = `${y}年${m}月${d}日`;
+      } else {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        dateDiv.textContent = `${months[m-1]} ${d}, ${y}`;
+      }
+      groupDiv.appendChild(dateDiv);
+      
+      g.items.sort((a, b) => a.time.localeCompare(b.time)).forEach(e => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'history-item';
+        
+        const statusSpan = document.createElement('span');
+        const statusClass = e.status === 'kept' ? 'kept' : (e.status === 'discarded' ? 'discarded' : 'transferred');
+        statusSpan.className = 'history-status ' + statusClass;
+        statusSpan.textContent = t(e.status);
+        
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'entry-time';
+        timeSpan.textContent = e.time;
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'entry-text';
+        textSpan.textContent = e.text;
+        
+        itemDiv.appendChild(statusSpan);
+        itemDiv.appendChild(timeSpan);
+        itemDiv.appendChild(textSpan);
+        groupDiv.appendChild(itemDiv);
+      });
+      
+      historyList.appendChild(groupDiv);
+    });
+  }
+
+  function renderNoteList() {
+    const groups = noteGroups();
+    noteList.innerHTML = '';
+    
+    if (groups.length === 0) {
+      noteEmpty.classList.remove('hidden');
+    } else {
+      noteEmpty.classList.add('hidden');
+    }
+    
+    groups.forEach(g => {
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'note-group';
+      
+      const dateDiv = document.createElement('div');
+      dateDiv.className = 'note-date';
+      const parts = g.date.split('-');
+      const y = parts[0], m = parseInt(parts[1]), d = parseInt(parts[2]);
+      if (prefs.lang === 'zh') {
+        dateDiv.textContent = `${y}年${m}月${d}日`;
+      } else {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        dateDiv.textContent = `${months[m-1]} ${d}, ${y}`;
+      }
+      groupDiv.appendChild(dateDiv);
+      
+      g.items.sort((a, b) => a.time.localeCompare(b.time)).forEach(n => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'note-item';
+        
+        if (editingNoteId === n.id) {
+          // 编辑模式
+          const editArea = document.createElement('textarea');
+          editArea.className = 'note-edit-area';
+          editArea.value = n.text;
+          
+          const editActions = document.createElement('div');
+          editActions.className = 'note-edit-actions';
+          
+          const saveBtn = document.createElement('button');
+          saveBtn.className = 'save-edit';
+          saveBtn.textContent = t('save');
+          saveBtn.addEventListener('click', () => {
+            n.text = editArea.value.trim() || n.text;
+            saveData();
+            editingNoteId = null;
+            renderNoteList();
+          });
+          
+          const cancelBtn = document.createElement('button');
+          cancelBtn.className = 'cancel-edit';
+          cancelBtn.textContent = t('cancel');
+          cancelBtn.addEventListener('click', () => {
+            editingNoteId = null;
+            renderNoteList();
+          });
+          
+          editActions.appendChild(saveBtn);
+          editActions.appendChild(cancelBtn);
+          
+          itemDiv.appendChild(editArea);
+          itemDiv.appendChild(editActions);
+        } else {
+          // 展示模式
+          const timeSpan = document.createElement('span');
+          timeSpan.className = 'note-time';
+          timeSpan.textContent = n.time;
+          
+          const textDiv = document.createElement('div');
+          textDiv.className = 'note-text';
+          textDiv.textContent = n.text;
+          
+          const actionsDiv = document.createElement('div');
+          actionsDiv.className = 'note-actions';
+          
+          const editBtn = document.createElement('button');
+          editBtn.className = 'edit-note';
+          editBtn.textContent = t('edit');
+          editBtn.addEventListener('click', () => {
+            editingNoteId = n.id;
+            renderNoteList();
+          });
+          
+          const delBtn = document.createElement('button');
+          delBtn.className = 'delete-note';
+          delBtn.textContent = t('delete');
+          delBtn.addEventListener('click', () => {
+            notes = notes.filter(x => x.id !== n.id);
+            saveData();
+            renderNoteList();
+          });
+          
+          actionsDiv.appendChild(editBtn);
+          actionsDiv.appendChild(delBtn);
+          
+          itemDiv.appendChild(timeSpan);
+          itemDiv.appendChild(textDiv);
+          itemDiv.appendChild(actionsDiv);
+        }
+        
+        groupDiv.appendChild(itemDiv);
+      });
+      
+      noteList.appendChild(groupDiv);
+    });
+  }
+
+  // ========== 视图切换 ==========
+  function showView(view) {
+    currentView = view;
+    mainView.classList.add('hidden');
+    noteView.classList.add('hidden');
+    reviewView.classList.add('hidden');
+    historyView.classList.add('hidden');
+    if (view === 'main') mainView.classList.remove('hidden');
+    if (view === 'note') noteView.classList.remove('hidden');
+    if (view === 'review') reviewView.classList.remove('hidden');
+    if (view === 'history') historyView.classList.remove('hidden');
+    
+    // 底部导航高亮
+    navBin.classList.toggle('active', view === 'main' || view === 'review' || view === 'history');
+    navNote.classList.toggle('active', view === 'note');
+    
+    renderAll();
+  }
+
+  // ========== 操作 ==========
+  function addEntry() {
+    const text = entryInput.value.trim();
+    if (!text) return;
+    entries.push({
+      id: uid(),
+      text,
+      time: timeStr(),
+      date: todayStr(),
+      status: 'pending'
+    });
+    saveData();
+    entryInput.value = '';
+    renderAll();
+    entryInput.focus();
+  }
+
+  function addNote() {
+    const text = noteInput.value.trim();
+    if (!text) return;
+    notes.push({
+      id: uid(),
+      text,
+      time: timeStr(),
+      date: todayStr()
+    });
+    saveData();
+    noteInput.value = '';
+    renderAll();
+    noteInput.focus();
+  }
+
+  function exportData() {
+    const data = JSON.stringify({ entries, notes }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `daily-bin-${todayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.entries && Array.isArray(data.entries)) {
+          entries = data.entries;
+        } else if (Array.isArray(data)) {
+          entries = data;
+        } else {
+          alert(t('import_error'));
+          return;
+        }
+        if (data.notes && Array.isArray(data.notes)) {
+          notes = data.notes;
+        }
+        saveData();
+        renderAll();
+      } catch(err) {
+        alert(t('import_error'));
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ========== 事件绑定 ==========
+  $('add-btn').addEventListener('click', addEntry);
+  entryInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addEntry();
+  });
+
+  $('note-add-btn').addEventListener('click', addNote);
+  noteInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addNote();
+  });
+
+  $('review-btn').addEventListener('click', () => showView('review'));
+  $('review-finish-btn').addEventListener('click', () => showView('main'));
+
+  $('history-btn').addEventListener('click', () => showView('history'));
+  $('history-clear-btn').addEventListener('click', () => {
+    if (confirm(t('confirm_clear'))) {
+      entries = entries.filter(e => e.status === 'pending');
+      saveData();
+      renderAll();
+    }
+  });
+
+  $('export-btn').addEventListener('click', exportData);
+  $('import-btn').addEventListener('click', () => $('import-file').click());
+  $('import-file').addEventListener('change', e => {
+    if (e.target.files.length > 0) {
+      importData(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
+
+  themeBtn.addEventListener('click', () => {
+    prefs.theme = prefs.theme === 'light' ? 'dark' : 'light';
+    savePrefs();
+    applyTheme();
+  });
+
+  langBtn.addEventListener('click', () => {
+    prefs.lang = prefs.lang === 'zh' ? 'en' : 'zh';
+    savePrefs();
+    applyLang();
+  });
+
+  navBin.addEventListener('click', () => showView('main'));
+  navNote.addEventListener('click', () => showView('note'));
+
+  // ========== 初始化 ==========
+  loadPrefs();
+  loadData();
+  applyTheme();
+  applyLang();
+  updateClock();
+  setInterval(updateClock, 30000);
+  renderAll();
+})();
+</script>
+</body>
+</html>
