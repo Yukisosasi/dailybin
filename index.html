@@ -6,7 +6,7 @@
 <title>今日桶 · Daily Bin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Noto+Serif+SC:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #F7F5F0;
@@ -36,7 +36,7 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "EB Garamond", "Noto Serif SC", "Songti SC", Georgia, serif;
+  font-family: "EB Garamond", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -279,6 +279,22 @@ body {
 }
 
 /* 底部操作 */
+.footer-actions-group {
+  margin-top: 32px;
+  padding-bottom: 20px;
+}
+.footer-actions-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.footer-actions-row + .footer-actions-row {
+  margin-top: 12px;
+}
+.footer-actions-row-secondary .btn-text {
+  font-size: 12px;
+  opacity: 0.7;
+}
 .footer-actions {
   display: flex;
   gap: 16px;
@@ -659,11 +675,20 @@ body {
 .history-item .entry-time {
   min-width: 40px;
 }
-.history-star {
+.history-star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
   color: var(--star);
-  font-size: 14px;
+  font-size: 16px;
   margin-left: auto;
   opacity: 0.8;
+  padding: 0 4px;
+  font-family: inherit;
+  transition: opacity 0.2s;
+}
+.history-star-btn:hover {
+  opacity: 1;
 }
 
 .hidden { display: none; }
@@ -676,6 +701,7 @@ body {
   .footer-nav { gap: 32px; }
 }
 </style>
+<link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@400;500;600&display=swap">
 </head>
 <body>
 <div id="app">
@@ -709,14 +735,16 @@ body {
     <ul class="entry-list" id="today-list"></ul>
     <div class="empty-hint hidden" id="empty-hint" data-i18n="empty">还没有东西。扔点什么进来。</div>
 
-    <div class="footer-actions">
-      <button class="btn-text" id="review-btn" data-i18n="review">睡前清点</button>
-      <button class="btn-text" id="history-btn" data-i18n="history">历史</button>
-      <button class="btn-text" id="search-btn" data-i18n="search">搜索</button>
-      <button class="btn-text" id="random-btn" data-i18n="random">随机回看</button>
-      <button class="btn-text" id="onthisday-btn" data-i18n="onthisday">那年今日</button>
-      <button class="btn-text" id="export-btn" data-i18n="export">导出</button>
-      <button class="btn-text" id="import-btn" data-i18n="import">导入</button>
+    <div class="footer-actions-group">
+      <div class="footer-actions-row">
+        <button class="btn-text" id="review-btn" data-i18n="review">睡前清点</button>
+        <button class="btn-text" id="history-btn" data-i18n="history">历史</button>
+        <button class="btn-text" id="search-btn" data-i18n="search">搜索</button>
+      </div>
+      <div class="footer-actions-row footer-actions-row-secondary">
+        <button class="btn-text" id="random-btn" data-i18n="random">随机回看</button>
+        <button class="btn-text" id="onthisday-btn" data-i18n="onthisday">那年今日</button>
+      </div>
     </div>
   </div>
 
@@ -763,6 +791,8 @@ body {
     </div>
     <div class="footer-actions">
       <button class="btn-text" id="history-clear-btn" data-i18n="clear_history">清空历史</button>
+      <button class="btn-text" id="export-btn" data-i18n="export">导出</button>
+      <button class="btn-text" id="import-btn" data-i18n="import">导入</button>
     </div>
   </div>
 
@@ -790,7 +820,7 @@ body {
   <div class="footer-nav">
     <button id="nav-bin" class="active" data-i18n="nav_bin">桶</button>
     <button id="nav-note" data-i18n="nav_note">记</button>
-    <button id="nav-onthisday" data-i18n="nav_onthisday">那年今日</button>
+
   </div>
 
   <!-- 随机回看弹窗 -->
@@ -1338,9 +1368,15 @@ body {
         itemDiv.appendChild(textSpan);
         
         if (e.starred) {
-          const starSpan = document.createElement('span');
-          starSpan.className = 'history-star';
+          const starSpan = document.createElement('button');
+          starSpan.className = 'history-star-btn';
           starSpan.textContent = '★';
+          starSpan.title = prefs.lang === 'zh' ? '取消收藏' : 'Unstar';
+          starSpan.addEventListener('click', () => {
+            e.starred = false;
+            saveData();
+            renderAll();
+          });
           itemDiv.appendChild(starSpan);
         }
         
