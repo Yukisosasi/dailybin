@@ -1762,14 +1762,13 @@ body {
 
   navBin.addEventListener('click', () => showView('main'));
   navNote.addEventListener('click', () => showView('note'));
-  navOnThisDay.addEventListener('click', () => showView('onthisday'));
   // ========== 初始化 ==========
   loadPrefs();
   loadData();
   applyTheme();
   applyLang();
   updateClock();
-  setInterval(updateClock, 30000);
+  setInterval(updateClock, 1000);
   renderAll();
 })();
 </script>
