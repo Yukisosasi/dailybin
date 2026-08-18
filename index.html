@@ -1031,10 +1031,10 @@ body {
       <div class="fish-zen" id="fish-zen"></div>
       <button class="btn-text fish-zen-save hidden" id="fish-zen-save" data-i18n="fish_zen_save">收下这句</button>
       <button class="btn-text" id="fish-mark-btn" data-i18n="fish_mark">记下这个数</button>
+      <button class="btn-text" id="fish-share-btn" data-i18n="share">分享</button>
       <div class="fish-marks" id="fish-marks"></div>
     </div>
   </div>
-
 
   <!-- 随机回看弹窗 -->
   <div id="random-overlay" class="random-overlay hidden">
@@ -1044,7 +1044,20 @@ body {
       <div class="random-meta" id="random-meta"></div>
       <div class="random-actions">
         <button id="random-again-btn" data-i18n="random_again">换一条</button>
+        <button id="random-share-btn" data-i18n="share">分享</button>
         <button id="random-close-btn" data-i18n="close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分享图弹窗 -->
+  <div id="share-overlay" class="random-overlay hidden">
+    <div class="random-card share-card">
+      <div class="random-label" data-i18n="share_preview">分享预览</div>
+      <canvas id="share-canvas" width="1080" height="1080" style="width:100%;max-width:320px;display:block;margin:0 auto 16px;"></canvas>
+      <div class="random-actions">
+        <button id="share-download-btn" data-i18n="download">保存图片</button>
+        <button id="share-close-btn" data-i18n="close">关闭</button>
       </div>
     </div>
   </div>
@@ -1227,6 +1240,7 @@ body {
       keep: '留下', discard: '删掉', transfer: '转入随记',
       kept: '留', discarded: '删', transferred: '转',
       confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
+      share: '分享', share_preview: '分享预览', download: '保存图片',
       export: '导出', import: '导入', copy: '复制',
       nav_bin: '桶', nav_note: '记', nav_fish: '鱼', fish_mark: '记下这个数', fish_zen_save: '收下这句',
       batch_edit: '批量编辑', select_all: '全选', select_none: '取消全选', delete_selected: '删除所选',
@@ -1252,6 +1266,8 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
+      share: 'Share', share_preview: 'Share Preview', download: 'Save Image',
+      export: 'Export', import: 'Import',
       copy: 'Copy',
       nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number', fish_zen_save: 'Keep this',
       batch_edit: 'Batch Edit', select_all: 'Select All', select_none: 'Select None', delete_selected: 'Delete Selected',
@@ -1290,6 +1306,7 @@ body {
   const navBin = $('nav-bin'), navNote = $('nav-note');
   const searchInput = $('search-input'), searchResults = $('search-results'), searchEmpty = $('search-empty');
   const randomOverlay = $('random-overlay'), randomText = $('random-text'), randomMeta = $('random-meta'), randomLabel = $('random-label');
+  const shareOverlay = $('share-overlay'), shareCanvas = $('share-canvas'), shareDownloadBtn = $('share-download-btn'), shareCloseBtn = $('share-close-btn');
   const fishView = $('fish-view');
   const fishBtn = $('fish-btn');
   const fishCountEl = $('fish-count');
@@ -2071,7 +2088,14 @@ body {
             tagBtn.addEventListener('click', () => {
               showTagPicker(n, 'note');
             });
-            
+            const shareBtn = document.createElement('button');
+            shareBtn.textContent = prefs.lang === 'zh' ? '分享' : 'Share';
+            shareBtn.addEventListener('click', () => {
+              generateShareImage('note', {
+                text: n.text,
+                date: `${n.date} ${n.time}`
+              });
+            });            
             const delBtn = document.createElement('button');
             delBtn.className = 'delete-note';
             delBtn.textContent = t('delete');
@@ -2082,6 +2106,7 @@ body {
             
             actionsDiv.appendChild(editBtn);
             actionsDiv.appendChild(tagBtn);
+            actionsDiv.appendChild(shareBtn);
             actionsDiv.appendChild(delBtn);
             
             itemDiv.appendChild(timeDiv);
@@ -2437,13 +2462,22 @@ body {
     renderOnThisDay();
   });
   $('random-close-btn').addEventListener('click', () => randomOverlay.classList.add('hidden'));
+  $('random-share-btn').addEventListener('click', () => {
+    const text = randomText.textContent;
+    const meta = randomMeta.textContent;
+    generateShareImage('note', {
+      text: text,
+      date: meta
+    });
+  });
   $('random-again-btn').addEventListener('click', showRandom);
   randomOverlay.addEventListener('click', e => {
     if (e.target === randomOverlay) randomOverlay.classList.add('hidden');
   });
 
   $('export-btn').addEventListener('click', exportData);
-  $('copy-btn').addEventListener('click', copyToClipboard);
+  $('share-download-btn').addEventListener('click', downloadShareImage);
+  $('share-close-btn').addEventListener('click', () => $('share-overlay').classList.add('hidden'));
   $('import-btn').addEventListener('click', () => $('import-file').click());
   $('import-file').addEventListener('change', e => {
     if (e.target.files.length > 0) {
@@ -2468,6 +2502,139 @@ body {
   navNote.addEventListener('click', () => showView('note'));
   navFish.addEventListener('click', () => showView('fish'));
 
+  // ========== 分享图生成 ==========
+  function generateShareImage(type, data) {
+    const canvas = $('share-canvas');
+    const ctx = canvas.getContext('2d');
+    const size = 1080;
+    const isDark = prefs.theme === 'dark';
+    const bgColor = isDark ? '#111111' : '#F7F5F0';
+    const textColor = isDark ? '#E8E4DC' : '#1A1A1A';
+    const accentColor = isDark ? '#C4A96A' : '#8B6F47';
+    const mutedColor = isDark ? 'rgba(232,228,220,0.5)' : 'rgba(26,26,26,0.5)';
+    
+    // 背景
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, size, size);
+    
+    // 字体
+    const fontFamily = '"EB Garamond", "Noto Serif SC", "Songti SC", serif';
+    
+    if (type === 'zen') {
+      // 木鱼禅语分享
+      // 画一个细圆环
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(size/2, size/2 - 40, 180, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // 中心小点
+      ctx.fillStyle = accentColor;
+      ctx.beginPath();
+      ctx.arc(size/2, size/2 - 40, 8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 禅语
+      ctx.fillStyle = textColor;
+      ctx.font = `48px ${fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const text = data.text || '';
+      const words = text.split('');
+      const lineLength = 8;
+      const lines = [];
+      for (let i = 0; i < words.length; i += lineLength) {
+        lines.push(words.slice(i, i + lineLength).join(''));
+      }
+      
+      lines.forEach((line, i) => {
+        ctx.fillText(line, size/2, size/2 + 120 + i * 64);
+      });
+      
+      // 数字
+      ctx.fillStyle = accentColor;
+      ctx.font = `36px ${fontFamily}`;
+      ctx.fillText(String(data.count || ''), size/2, size/2 + 120 + lines.length * 64 + 40);
+      
+    } else if (type === 'note') {
+      // 随记分享
+      ctx.fillStyle = textColor;
+      ctx.font = `56px ${fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const text = data.text || '';
+      const chars = text.split('');
+      const lineLength = 12;
+      const lines = [];
+      for (let i = 0; i < chars.length; i += lineLength) {
+        lines.push(chars.slice(i, i + lineLength).join(''));
+      }
+      
+      const startY = size/2 - (lines.length - 1) * 40;
+      lines.forEach((line, i) => {
+        ctx.fillText(line, size/2, startY + i * 80);
+      });
+      
+      // 日期
+      if (data.date) {
+        ctx.fillStyle = mutedColor;
+        ctx.font = `28px ${fontFamily}`;
+        ctx.fillText(data.date, size/2, size/2 + lines.length * 40 + 60);
+      }
+      
+    } else if (type === 'daily') {
+      // 今日桶汇总
+      ctx.fillStyle = textColor;
+      ctx.font = `40px ${fontFamily}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      
+      let y = 200;
+      ctx.fillText(prefs.lang === 'zh' ? '今日 · 留' : 'Today · Kept', 120, y);
+      y += 80;
+      
+      ctx.font = `32px ${fontFamily}`;
+      (data.kept || []).forEach(item => {
+        const text = item.length > 14 ? item.slice(0, 14) + '…' : item;
+        ctx.fillText(text, 120, y);
+        y += 56;
+      });
+      
+      y += 60;
+      ctx.fillStyle = textColor;
+      ctx.font = `40px ${fontFamily}`;
+      ctx.fillText(prefs.lang === 'zh' ? '今日 · 删' : 'Today · Discarded', 120, y);
+      y += 80;
+      
+      ctx.font = `32px ${fontFamily}`;
+      (data.discarded || []).forEach(item => {
+        const text = item.length > 14 ? item.slice(0, 14) + '…' : item;
+        ctx.fillText(text, 120, y);
+        y += 56;
+      });
+    }
+    
+    // 底部标注
+    ctx.fillStyle = mutedColor;
+    ctx.font = `24px ${fontFamily}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('今日桶 · dailybin', size/2, size - 60);
+    
+    // 显示弹窗
+    $('share-overlay').classList.remove('hidden');
+  }
+  
+  function downloadShareImage() {
+    const canvas = $('share-canvas');
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `dailybin-share-${Date.now()}.png`;
+    a.click();
+  }
   // 木鱼音效
   let audioCtx = null;
   function vibrateLight() {
@@ -2531,6 +2698,12 @@ body {
     });
     saveFishMarks();
     renderFishMarks();
+  });
+    $('fish-share-btn').addEventListener('click', () => {
+    generateShareImage('zen', {
+      text: currentZen || '',
+      count: fishCount
+    });
   });
     fishZenSaveBtn.addEventListener('click', () => {
     if (!currentZen) return;
