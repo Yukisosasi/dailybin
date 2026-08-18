@@ -725,6 +725,43 @@ body {
 .fish-btn:active {
   transform: scale(0.92);
 }
+.fish-marks {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 24px;
+}
+.fish-mark-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+.fish-mark-count {
+  font-size: 24px;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+}
+.fish-mark-time {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+.fish-mark-delete {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.4;
+  font-family: inherit;
+  transition: opacity 0.2s, color 0.2s;
+}
+.fish-mark-delete:hover {
+  opacity: 1;
+  color: var(--danger);
+}
 .fish-btn::after {
   content: '';
   position: absolute;
@@ -875,6 +912,8 @@ body {
     <div class="main fish-main">
       <div class="fish-count" id="fish-count">0</div>
       <button class="fish-btn" id="fish-btn"></button>
+      <button class="btn-text" id="fish-mark-btn" data-i18n="fish_mark">记下这个数</button>
+      <div class="fish-marks" id="fish-marks"></div>
     </div>
   </div>
 
@@ -912,6 +951,7 @@ body {
   let currentNoteTagFilter = null;
   let currentHistoryFilter = 'all'; // 'all' | 'starred'
   let fishCount = 0;
+  let fishMarks = []; // { count, time, date }
   
 
   // ========== 工具 ==========
@@ -937,12 +977,22 @@ body {
       const rawFish = localStorage.getItem('daily_bin_fish');
       fishCount = rawFish ? parseInt(rawFish) : 0;
     } catch(e) { fishCount = 0; }
+    loadFishMarks();
   }
   function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries, notes }));
   }
   function saveFish() {
     localStorage.setItem('daily_bin_fish', String(fishCount));
+  }
+  function loadFishMarks() {
+    try {
+      const raw = localStorage.getItem('daily_bin_fish_marks');
+      fishMarks = raw ? JSON.parse(raw) : [];
+    } catch(e) { fishMarks = []; }
+  }
+  function saveFishMarks() {
+    localStorage.setItem('daily_bin_fish_marks', JSON.stringify(fishMarks));
   }
   function loadPrefs() {
     try {
@@ -1010,7 +1060,7 @@ body {
       kept: '留', discarded: '删', transferred: '转',
       confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
       export: '导出', import: '导入',
-      nav_bin: '桶', nav_note: '记', nav_fish: '鱼',
+      nav_bin: '桶', nav_note: '记', nav_fish: '鱼', fish_mark: '记下这个数',
       note_prompt: '写点什么…', note_placeholder: '随记，可以写长一点', note_add: '放下',
       note_label: '随记', note_empty: '还没有随记。',
       edit: '编辑', delete: '删除', save: '保存', cancel: '取消',
@@ -1032,7 +1082,7 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
-      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish',
+      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number',
       note_prompt: 'Write something…', note_placeholder: 'A note, can be longer', note_add: 'Put down',
       note_label: 'Notes', note_empty: 'No notes yet.',
       edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel',
@@ -1073,6 +1123,8 @@ body {
   const fishBtn = $('fish-btn');
   const fishCountEl = $('fish-count');
   const navFish = $('nav-fish');
+  const fishMarkBtn = $('fish-mark-btn');
+  const fishMarksEl = $('fish-marks');
   const tagFilterRow = $('tag-filter-row'), noteTagFilterRow = $('note-tag-filter-row');
 
   // ========== 时钟 ==========
@@ -1651,6 +1703,35 @@ body {
     }
   }
 
+  function renderFishMarks() {
+    fishMarksEl.innerHTML = '';
+    fishMarks.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)).forEach(m => {
+      const div = document.createElement('div');
+      div.className = 'fish-mark-item';
+      
+      const countSpan = document.createElement('span');
+      countSpan.className = 'fish-mark-count';
+      countSpan.textContent = m.count;
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'fish-mark-time';
+      timeSpan.textContent = `${m.date} ${m.time}`;
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'fish-mark-delete';
+      delBtn.textContent = '×';
+      delBtn.addEventListener('click', () => {
+        fishMarks = fishMarks.filter(x => x !== m);
+        saveFishMarks();
+        renderFishMarks();
+      });
+      
+      div.appendChild(countSpan);
+      div.appendChild(timeSpan);
+      div.appendChild(delBtn);
+      fishMarksEl.appendChild(div);
+    });
+  }
   function showRandom() {
     const allItems = [];
     entries.filter(e => e.status === 'kept' || e.status === 'transferred').forEach(e => {
@@ -1845,22 +1926,31 @@ body {
       const ctx = audioCtx;
       const now = ctx.currentTime;
       
-      // 短促的木质敲击声
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      // 主敲击：低频短促
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(180, now);
+      osc1.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+      gain1.gain.setValueAtTime(0.7, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.12);
       
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.exponentialRampToValueAtTime(200, now + 0.06);
-      
-      gain.gain.setValueAtTime(0.6, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start(now);
-      osc.stop(now + 0.1);
+      // 木质共鸣层：更短的脉冲
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(400, now);
+      osc2.frequency.exponentialRampToValueAtTime(120, now + 0.04);
+      gain2.gain.setValueAtTime(0.4, now);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.08);
     } catch(e) {
       // 忽略音频错误
     }
@@ -1872,6 +1962,15 @@ body {
     saveFish();
     playFishSound();
   });
+    fishMarkBtn.addEventListener('click', () => {
+    fishMarks.push({
+      count: fishCount,
+      time: timeStr(),
+      date: todayStr()
+    });
+    saveFishMarks();
+    renderFishMarks();
+  });
   // ========== 初始化 ==========
   loadPrefs();
   loadData();
@@ -1881,6 +1980,7 @@ body {
   setInterval(updateClock, 1000);
   renderAll();
   fishCountEl.textContent = fishCount;
+  renderFishMarks();
 })();
 </script>
 </body>
