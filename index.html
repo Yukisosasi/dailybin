@@ -876,6 +876,32 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* 页脚介绍 */
+.site-footer {
+  text-align: center;
+  padding: 56px 24px 80px;
+  margin-top: 48px;
+  border-top: 1px solid var(--line);
+  opacity: 0.65;
+}
+.site-footer-text {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.25em;
+  line-height: 2.4;
+  font-weight: normal;
+}
+.footer-footer-space {
+  margin-top: 16px;
+}
+.footer-footer-last {
+  margin-top: 28px;
+  font-size: 11px;
+  letter-spacing: 0.35em;
+  color: var(--accent);
+  opacity: 0.7;
+}
+
 .hidden { display: none; }
 
 @media (max-width: 480px) {
@@ -1014,6 +1040,20 @@ body {
       <div id="onthisday-list"></div>
       <div class="empty-hint hidden" id="onthisday-empty" data-i18n="onthisday_empty">往年的今天，什么都没有。</div>
     </div>
+  </div>
+
+  <!-- 页脚介绍 -->
+  <div class="site-footer">
+    <div class="site-footer-text" data-i18n="footer_line1">今日桶 · dailybin</div>
+    <div class="site-footer-text footer-footer-space" data-i18n="footer_line2">投一片念头</div>
+    <div class="site-footer-text" data-i18n="footer_line3">过一夜</div>
+    <div class="site-footer-text" data-i18n="footer_line4">留三件</div>
+    <div class="site-footer-text footer-footer-space" data-i18n="footer_line5">敲一尾木鱼</div>
+    <div class="site-footer-text" data-i18n="footer_line6">数字起</div>
+    <div class="site-footer-text" data-i18n="footer_line7">不可逆</div>
+    <div class="site-footer-text footer-footer-space" data-i18n="footer_line8">无算法，无社交，无焦虑</div>
+    <div class="site-footer-text" data-i18n="footer_line9">只有你和你的碎片</div>
+    <div class="site-footer-text footer-footer-last" data-i18n="footer_line10">Made by Eloise</div>
   </div>
 
   <!-- 底部导航 -->
@@ -1240,6 +1280,16 @@ body {
       keep: '留下', discard: '删掉', transfer: '转入随记',
       kept: '留', discarded: '删', transferred: '转',
       confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
+      footer_line1: '今日桶 · dailybin',
+      footer_line2: '投一片念头',
+      footer_line3: '过一夜',
+      footer_line4: '留三件',
+      footer_line5: '敲一尾木鱼',
+      footer_line6: '数字起',
+      footer_line7: '不可逆',
+      footer_line8: '无算法，无社交，无焦虑',
+      footer_line9: '只有你和你的碎片',
+      footer_line10: 'Made by Eloise',
       share: '分享', share_preview: '分享预览', download: '保存图片',
       export: '导出', import: '导入', copy: '复制',
       nav_bin: '桶', nav_note: '记', nav_fish: '鱼', fish_mark: '记下这个数', fish_zen_save: '收下这句',
@@ -1266,6 +1316,16 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
+      footer_line1: 'Daily Bin',
+      footer_line2: 'Throw in a thought',
+      footer_line3: 'Let it rest overnight',
+      footer_line4: 'Keep three',
+      footer_line5: 'Tap the wooden fish',
+      footer_line6: 'The number rises',
+      footer_line7: 'Irreversible',
+      footer_line8: 'No algorithm, no social, no anxiety',
+      footer_line9: 'Just you and your fragments',
+      footer_line10: 'Made by Eloise',
       share: 'Share', share_preview: 'Share Preview', download: 'Save Image',
       export: 'Export', import: 'Import',
       copy: 'Copy',
@@ -2522,60 +2582,89 @@ body {
     
     if (type === 'zen') {
       // 木鱼禅语分享
-      // 画一个细圆环
+      // 画一个很淡的圆环，放在上方
       ctx.strokeStyle = accentColor;
-      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(size/2, size/2 - 40, 180, 0, Math.PI * 2);
+      ctx.arc(size/2, 280, 120, 0, Math.PI * 2);
       ctx.stroke();
       
-      // 中心小点
+      // 中心小点，也很淡
       ctx.fillStyle = accentColor;
+      ctx.globalAlpha = 0.35;
       ctx.beginPath();
-      ctx.arc(size/2, size/2 - 40, 8, 0, Math.PI * 2);
+      ctx.arc(size/2, 280, 5, 0, Math.PI * 2);
       ctx.fill();
       
-      // 禅语
+      ctx.globalAlpha = 1;
+      
+      // 禅语：按像素宽度自动换行
+      ctx.fillStyle = textColor;
+      ctx.font = `44px ${fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const text = data.text || '';
+      const maxWidth = 680;
+      const chars = text.split('');
+      const lines = [];
+      let currentLine = '';
+      
+      for (let i = 0; i < chars.length; i++) {
+        const testLine = currentLine + chars[i];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine.length > 0) {
+          lines.push(currentLine);
+          currentLine = chars[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      
+      const lineHeight = 64;
+      const textStartY = 480;
+      lines.forEach((line, i) => {
+        ctx.fillText(line, size/2, textStartY + i * lineHeight);
+      });
+      
+      // 数字，在文字下方
+      ctx.fillStyle = accentColor;
+      ctx.font = `32px ${fontFamily}`;
+      const numY = textStartY + lines.length * lineHeight + 40;
+      ctx.fillText(String(data.count || ''), size/2, numY);
+      
+    } else if (type === 'note') {
+      
+      // 随记分享
       ctx.fillStyle = textColor;
       ctx.font = `48px ${fontFamily}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
       const text = data.text || '';
-      const words = text.split('');
-      const lineLength = 8;
-      const lines = [];
-      for (let i = 0; i < words.length; i += lineLength) {
-        lines.push(words.slice(i, i + lineLength).join(''));
-      }
-      
-      lines.forEach((line, i) => {
-        ctx.fillText(line, size/2, size/2 + 120 + i * 64);
-      });
-      
-      // 数字
-      ctx.fillStyle = accentColor;
-      ctx.font = `36px ${fontFamily}`;
-      ctx.fillText(String(data.count || ''), size/2, size/2 + 120 + lines.length * 64 + 40);
-      
-    } else if (type === 'note') {
-      // 随记分享
-      ctx.fillStyle = textColor;
-      ctx.font = `56px ${fontFamily}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      
-      const text = data.text || '';
+      const maxWidth = 720;
       const chars = text.split('');
-      const lineLength = 12;
       const lines = [];
-      for (let i = 0; i < chars.length; i += lineLength) {
-        lines.push(chars.slice(i, i + lineLength).join(''));
-      }
+      let currentLine = '';
       
-      const startY = size/2 - (lines.length - 1) * 40;
+      for (let i = 0; i < chars.length; i++) {
+        const testLine = currentLine + chars[i];
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine.length > 0) {
+          lines.push(currentLine);
+          currentLine = chars[i];
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      
+      const lineHeight = 72;
+      const startY = size/2 - (lines.length - 1) * lineHeight / 2;
       lines.forEach((line, i) => {
-        ctx.fillText(line, size/2, startY + i * 80);
+        ctx.fillText(line, size/2, startY + i * lineHeight);
       });
       
       // 日期
