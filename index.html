@@ -615,6 +615,15 @@ body {
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 20px;
+  align-items: center;
+}
+.tag-manage-btn {
+  margin-left: auto;
+  opacity: 0.5;
+  font-size: 11px;
+}
+.tag-manage-btn:hover {
+  opacity: 1;
 }
 .tag-filter-btn {
   background: none;
@@ -798,20 +807,24 @@ body {
   justify-content: space-between;
   align-items: baseline;
   cursor: pointer;
-  padding: 8px 0;
+  padding: 14px 0 10px;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   user-select: none;
   transition: color 0.2s;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
 }
 .collapse-header:hover {
   color: var(--accent);
 }
 .collapse-header .collapse-arrow {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   transition: transform 0.3s;
   display: inline-block;
+  opacity: 0.6;
 }
 .collapse-header.collapsed .collapse-arrow {
   transform: rotate(-90deg);
@@ -1453,9 +1466,8 @@ body {
         tagFilterRow.appendChild(btn);
       });
       const manageBtn = document.createElement('button');
-      manageBtn.className = 'tag-filter-btn';
-      manageBtn.textContent = prefs.lang === 'zh' ? '管理' : 'Manage';
-      manageBtn.style.opacity = '0.5';
+      manageBtn.className = 'tag-filter-btn tag-manage-btn';
+      manageBtn.textContent = prefs.lang === 'zh' ? '标签管理' : 'Tag Manage';
       manageBtn.addEventListener('click', () => showTagManage('entry'));
       tagFilterRow.appendChild(manageBtn);
     } else {
@@ -1479,9 +1491,8 @@ body {
         noteTagFilterRow.appendChild(btn);
       });
       const manageBtn = document.createElement('button');
-      manageBtn.className = 'tag-filter-btn';
-      manageBtn.textContent = prefs.lang === 'zh' ? '管理' : 'Manage';
-      manageBtn.style.opacity = '0.5';
+      manageBtn.className = 'tag-filter-btn tag-manage-btn';
+      manageBtn.textContent = prefs.lang === 'zh' ? '标签管理' : 'Tag Manage';
       manageBtn.addEventListener('click', () => showTagManage('note'));
       noteTagFilterRow.appendChild(manageBtn);
       // 收藏筛选
