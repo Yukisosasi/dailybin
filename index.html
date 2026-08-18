@@ -725,6 +725,13 @@ body {
 .fish-btn:active {
   transform: scale(0.92);
 }
+.fish-zen-save {
+  opacity: 0.6;
+  font-size: 12px;
+}
+.fish-zen-save:hover {
+  opacity: 1;
+}
 .fish-zen {
   font-size: 14px;
   color: var(--muted);
@@ -923,6 +930,7 @@ body {
       <div class="fish-count" id="fish-count">0</div>
       <button class="fish-btn" id="fish-btn"></button>
       <div class="fish-zen" id="fish-zen"></div>
+      <button class="btn-text fish-zen-save hidden" id="fish-zen-save" data-i18n="fish_zen_save">收下这句</button>
       <button class="btn-text" id="fish-mark-btn" data-i18n="fish_mark">记下这个数</button>
       <div class="fish-marks" id="fish-marks"></div>
     </div>
@@ -963,6 +971,7 @@ body {
   let currentHistoryFilter = 'all'; // 'all' | 'starred'
   let fishCount = 0;
   let fishMarks = []; // { count, time, date }
+  let currentZen = '';
   const zenQuotes = [
     '一切有为法，如梦幻泡影',
     '应无所住而生其心',
@@ -998,6 +1007,8 @@ body {
   function showZen() {
     const el = $('fish-zen');
     const quote = zenQuotes[Math.floor(Math.random() * zenQuotes.length)];
+    currentZen = quote;
+    fishZenSaveBtn.classList.remove('hidden');
     el.style.opacity = '0';
     setTimeout(() => {
       el.textContent = quote;
@@ -1112,7 +1123,7 @@ body {
       kept: '留', discarded: '删', transferred: '转',
       confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
       export: '导出', import: '导入',
-      nav_bin: '桶', nav_note: '记', nav_fish: '鱼', fish_mark: '记下这个数',
+      nav_bin: '桶', nav_note: '记', nav_fish: '鱼', fish_mark: '记下这个数', fish_zen_save: '收下这句',
       note_prompt: '写点什么…', note_placeholder: '随记，可以写长一点', note_add: '放下',
       note_label: '随记', note_empty: '还没有随记。',
       edit: '编辑', delete: '删除', save: '保存', cancel: '取消',
@@ -1134,7 +1145,7 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
-      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number',
+      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number', fish_zen_save: 'Keep this',
       note_prompt: 'Write something…', note_placeholder: 'A note, can be longer', note_add: 'Put down',
       note_label: 'Notes', note_empty: 'No notes yet.',
       edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel',
@@ -1177,6 +1188,7 @@ body {
   const navFish = $('nav-fish');
   const fishMarkBtn = $('fish-mark-btn');
   const fishMarksEl = $('fish-marks');
+  const fishZenSaveBtn = $('fish-zen-save');
   const tagFilterRow = $('tag-filter-row'), noteTagFilterRow = $('note-tag-filter-row');
 
   // ========== 时钟 ==========
@@ -2013,7 +2025,9 @@ body {
     fishCountEl.textContent = fishCount;
     saveFish();
     playFishSound();
-    showZen();
+    if (fishCount % 3 === 0) {
+      showZen();
+    }
   });
     fishMarkBtn.addEventListener('click', () => {
     fishMarks.push({
@@ -2023,6 +2037,20 @@ body {
     });
     saveFishMarks();
     renderFishMarks();
+  });
+    fishZenSaveBtn.addEventListener('click', () => {
+    if (!currentZen) return;
+    notes.push({
+      id: uid(),
+      text: currentZen,
+      time: timeStr(),
+      date: todayStr(),
+      starred: false,
+      tags: []
+    });
+    saveData();
+    fishZenSaveBtn.classList.add('hidden');
+    renderAll();
   });
   // ========== 初始化 ==========
   loadPrefs();
