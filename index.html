@@ -2301,6 +2301,105 @@ body {
   fishCountEl.textContent = fishCount;
   renderFishMarks();
   showZen();
+  
+  // ========== 批量编辑事件绑定 ==========
+  function bindBatchEvents() {
+    const noteToggle = $('note-batch-toggle');
+    const noteBar = $('note-batch-bar');
+    const noteAll = $('note-batch-all');
+    const noteNone = $('note-batch-none');
+    const noteDelete = $('note-batch-delete');
+    const noteCount = $('note-batch-count');
+    
+    const historyToggle = $('history-batch-toggle');
+    const historyBar = $('history-batch-bar');
+    const historyAll = $('history-batch-all');
+    const historyNone = $('history-batch-none');
+    const historyDelete = $('history-batch-delete');
+    const historyCount = $('history-batch-count');
+    
+    if (noteToggle) {
+      noteToggle.addEventListener('click', () => {
+        batchMode.note = !batchMode.note;
+        batchSelected.note.clear();
+        if (batchMode.note) {
+          noteToggle.textContent = prefs.lang === 'zh' ? '完成' : 'Done';
+          noteBar.classList.remove('hidden');
+        } else {
+          noteToggle.textContent = t('batch_edit');
+          noteBar.classList.add('hidden');
+        }
+        renderAll();
+      });
+    }
+    if (noteAll) {
+      noteAll.addEventListener('click', () => {
+        batchSelected.note = new Set(notes.map(n => n.id));
+        renderAll();
+      });
+    }
+    if (noteNone) {
+      noteNone.addEventListener('click', () => {
+        batchSelected.note.clear();
+        renderAll();
+      });
+    }
+    if (noteDelete) {
+      noteDelete.addEventListener('click', () => {
+        if (batchSelected.note.size === 0) return;
+        if (!confirm(prefs.lang === 'zh' ? `确定删除选中的 ${batchSelected.note.size} 条吗？` : `Delete ${batchSelected.note.size} selected items?`)) return;
+        notes = notes.filter(n => !batchSelected.note.has(n.id));
+        saveData();
+        batchMode.note = false;
+        batchSelected.note.clear();
+        noteToggle.textContent = t('batch_edit');
+        noteBar.classList.add('hidden');
+        renderAll();
+      });
+    }
+    
+    if (historyToggle) {
+      historyToggle.addEventListener('click', () => {
+        batchMode.history = !batchMode.history;
+        batchSelected.history.clear();
+        if (batchMode.history) {
+          historyToggle.textContent = prefs.lang === 'zh' ? '完成' : 'Done';
+          historyBar.classList.remove('hidden');
+        } else {
+          historyToggle.textContent = t('batch_edit');
+          historyBar.classList.add('hidden');
+        }
+        renderAll();
+      });
+    }
+    if (historyAll) {
+      historyAll.addEventListener('click', () => {
+        batchSelected.history = new Set(entries.filter(e => e.status !== 'pending').map(e => e.id));
+        renderAll();
+      });
+    }
+    if (historyNone) {
+      historyNone.addEventListener('click', () => {
+        batchSelected.history.clear();
+        renderAll();
+      });
+    }
+    if (historyDelete) {
+      historyDelete.addEventListener('click', () => {
+        if (batchSelected.history.size === 0) return;
+        if (!confirm(prefs.lang === 'zh' ? `确定删除选中的 ${batchSelected.history.size} 条吗？` : `Delete ${batchSelected.history.size} selected items?`)) return;
+        entries = entries.filter(e => !batchSelected.history.has(e.id));
+        saveData();
+        batchMode.history = false;
+        batchSelected.history.clear();
+        historyToggle.textContent = t('batch_edit');
+        historyBar.classList.add('hidden');
+        renderAll();
+      });
+    }
+  }
+  
+  bindBatchEvents();
 })();
 </script>
 </body>
