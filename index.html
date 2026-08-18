@@ -691,6 +691,53 @@ body {
   opacity: 1;
 }
 
+/* 木鱼 */
+.fish-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: 32px;
+  margin-top: 24px;
+}
+.fish-count {
+  font-size: 56px;
+  font-weight: normal;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  user-select: none;
+}
+.fish-btn {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: none;
+  cursor: pointer;
+  transition: transform 0.05s, background 0.2s;
+  outline: none;
+  position: relative;
+}
+.fish-btn:hover {
+  background: var(--hover);
+}
+.fish-btn:active {
+  transform: scale(0.92);
+}
+.fish-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  opacity: 0.6;
+}
+
 .hidden { display: none; }
 
 @media (max-width: 480px) {
@@ -820,8 +867,17 @@ body {
   <div class="footer-nav">
     <button id="nav-bin" class="active" data-i18n="nav_bin">桶</button>
     <button id="nav-note" data-i18n="nav_note">记</button>
-
+    <button id="nav-fish" data-i18n="nav_fish">鱼</button>
   </div>
+
+  <!-- 木鱼视图 -->
+  <div id="fish-view" class="hidden">
+    <div class="main fish-main">
+      <div class="fish-count" id="fish-count">0</div>
+      <button class="fish-btn" id="fish-btn"></button>
+    </div>
+  </div>
+
 
   <!-- 随机回看弹窗 -->
   <div id="random-overlay" class="random-overlay hidden">
@@ -854,7 +910,8 @@ body {
   let editingNoteId = null;
   let currentTagFilter = null; // null = 全部
   let currentNoteTagFilter = null;
-  let currentHistoryFilter = 'all';
+  let currentHistoryFilter = 'all'; // 'all' | 'starred'
+  let fishCount = 0;
   
 
   // ========== 工具 ==========
@@ -874,9 +931,18 @@ body {
         if (!n.tags) n.tags = [];
       });
     } catch(e) { entries = []; notes = []; }
+    
+    // 加载木鱼计数
+    try {
+      const rawFish = localStorage.getItem('daily_bin_fish');
+      fishCount = rawFish ? parseInt(rawFish) : 0;
+    } catch(e) { fishCount = 0; }
   }
   function saveData() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries, notes }));
+  }
+  function saveFish() {
+    localStorage.setItem('daily_bin_fish', String(fishCount));
   }
   function loadPrefs() {
     try {
@@ -944,7 +1010,7 @@ body {
       kept: '留', discarded: '删', transferred: '转',
       confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
       export: '导出', import: '导入',
-      nav_bin: '桶', nav_note: '记',
+      nav_bin: '桶', nav_note: '记', nav_fish: '鱼',
       note_prompt: '写点什么…', note_placeholder: '随记，可以写长一点', note_add: '放下',
       note_label: '随记', note_empty: '还没有随记。',
       edit: '编辑', delete: '删除', save: '保存', cancel: '取消',
@@ -966,7 +1032,7 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
-      nav_bin: 'Bin', nav_note: 'Notes',
+      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish',
       note_prompt: 'Write something…', note_placeholder: 'A note, can be longer', note_add: 'Put down',
       note_label: 'Notes', note_empty: 'No notes yet.',
       edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel',
@@ -1003,6 +1069,10 @@ body {
   const navBin = $('nav-bin'), navNote = $('nav-note');
   const searchInput = $('search-input'), searchResults = $('search-results'), searchEmpty = $('search-empty');
   const randomOverlay = $('random-overlay'), randomText = $('random-text'), randomMeta = $('random-meta'), randomLabel = $('random-label');
+  const fishView = $('fish-view');
+  const fishBtn = $('fish-btn');
+  const fishCountEl = $('fish-count');
+  const navFish = $('nav-fish');
   const tagFilterRow = $('tag-filter-row'), noteTagFilterRow = $('note-tag-filter-row');
 
   // ========== 时钟 ==========
@@ -1613,17 +1683,18 @@ body {
     historyView.classList.add('hidden');
     searchView.classList.add('hidden');
     onthisdayView.classList.add('hidden');
-    onthisdayView.classList.add('hidden');
+    fishView.classList.add('hidden');
     if (view === 'main') mainView.classList.remove('hidden');
     if (view === 'note') noteView.classList.remove('hidden');
     if (view === 'review') reviewView.classList.remove('hidden');
     if (view === 'history') historyView.classList.remove('hidden');
     if (view === 'search') searchView.classList.remove('hidden');
     if (view === 'onthisday') onthisdayView.classList.remove('hidden');
-    if (view === 'onthisday') onthisdayView.classList.remove('hidden');
+    if (view === 'fish') fishView.classList.remove('hidden');
     
     navBin.classList.toggle('active', view === 'main' || view === 'review' || view === 'history' || view === 'search');
     navNote.classList.toggle('active', view === 'note');
+    navFish.classList.toggle('active', view === 'fish');
     
     renderAll();
   }
@@ -1762,6 +1833,45 @@ body {
 
   navBin.addEventListener('click', () => showView('main'));
   navNote.addEventListener('click', () => showView('note'));
+  navFish.addEventListener('click', () => showView('fish'));
+
+  // 木鱼音效
+  let audioCtx = null;
+  function playFishSound() {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioCtx;
+      const now = ctx.currentTime;
+      
+      // 短促的木质敲击声
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.06);
+      
+      gain.gain.setValueAtTime(0.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch(e) {
+      // 忽略音频错误
+    }
+  }
+
+  fishBtn.addEventListener('click', () => {
+    fishCount++;
+    fishCountEl.textContent = fishCount;
+    saveFish();
+    playFishSound();
+  });
   // ========== 初始化 ==========
   loadPrefs();
   loadData();
@@ -1770,6 +1880,7 @@ body {
   updateClock();
   setInterval(updateClock, 1000);
   renderAll();
+  fishCountEl.textContent = fishCount;
 })();
 </script>
 </body>
