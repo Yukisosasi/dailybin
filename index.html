@@ -991,6 +991,7 @@ body {
     <div class="footer-actions">
       <button class="btn-text" id="history-clear-btn" data-i18n="clear_history">清空历史</button>
       <button class="btn-text" id="export-btn" data-i18n="export">导出</button>
+      <button class="btn-text" id="copy-btn" data-i18n="copy">复制</button>
       <button class="btn-text" id="import-btn" data-i18n="import">导入</button>
     </div>
   </div>
@@ -1226,7 +1227,7 @@ body {
       keep: '留下', discard: '删掉', transfer: '转入随记',
       kept: '留', discarded: '删', transferred: '转',
       confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
-      export: '导出', import: '导入',
+      export: '导出', import: '导入', copy: '复制',
       nav_bin: '桶', nav_note: '记', nav_fish: '鱼', fish_mark: '记下这个数', fish_zen_save: '收下这句',
       batch_edit: '批量编辑', select_all: '全选', select_none: '取消全选', delete_selected: '删除所选',
       manage_tags: '管理标签', rename_tag: '重命名', delete_tag: '删除标签',
@@ -1251,6 +1252,7 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
+      copy: 'Copy',
       nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number', fish_zen_save: 'Keep this',
       batch_edit: 'Batch Edit', select_all: 'Select All', select_none: 'Select None', delete_selected: 'Delete Selected',
       manage_tags: 'Manage Tags', rename_tag: 'Rename', delete_tag: 'Delete Tag',
@@ -1735,6 +1737,21 @@ body {
     reviewList.innerHTML = '';
     reviewCount.textContent = tf('review_count', items.length);
     
+    if (items.length > 0) {
+      const allKeepBtn = document.createElement('button');
+      allKeepBtn.className = 'btn-text';
+      allKeepBtn.textContent = prefs.lang === 'zh' ? '全部留下' : 'Keep All';
+      allKeepBtn.style.marginBottom = '16px';
+      allKeepBtn.addEventListener('click', () => {
+        items.forEach(e => {
+          e.status = 'kept';
+        });
+        saveData();
+        renderAll();
+      });
+      reviewList.appendChild(allKeepBtn);
+    }
+    
     items.sort((a,b) => a.time.localeCompare(b.time)).forEach(e => {
       const div = document.createElement('div');
       div.className = 'review-item';
@@ -2091,13 +2108,15 @@ body {
     
     const results = [];
     entries.forEach(e => {
-      if (e.text.toLowerCase().includes(query)) {
-        results.push({ type: 'entry', date: e.date, time: e.time, text: e.text });
+      const tagMatch = (e.tags || []).some(t => t.toLowerCase().includes(query));
+      if (e.text.toLowerCase().includes(query) || tagMatch) {
+        results.push({ type: 'entry', date: e.date, time: e.time, text: e.text, tags: e.tags || [] });
       }
     });
     notes.forEach(n => {
-      if (n.text.toLowerCase().includes(query)) {
-        results.push({ type: 'note', date: n.date, time: n.time, text: n.text });
+      const tagMatch = (n.tags || []).some(t => t.toLowerCase().includes(query));
+      if (n.text.toLowerCase().includes(query) || tagMatch) {
+        results.push({ type: 'note', date: n.date, time: n.time, text: n.text, tags: n.tags || [] });
       }
     });
     results.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
@@ -2121,6 +2140,19 @@ body {
         
         div.appendChild(metaDiv);
         div.appendChild(textDiv);
+        
+        if (r.tags && r.tags.length > 0) {
+          const tagsDiv = document.createElement('div');
+          tagsDiv.className = 'entry-tags';
+          r.tags.forEach(tag => {
+            const tagSpan = document.createElement('span');
+            tagSpan.className = 'entry-tag';
+            tagSpan.textContent = tag;
+            tagsDiv.appendChild(tagSpan);
+          });
+          div.appendChild(tagsDiv);
+        }
+        
         searchResults.appendChild(div);
       });
     }
@@ -2283,6 +2315,53 @@ body {
     a.click();
     URL.revokeObjectURL(url);
   }
+  
+  function copyToClipboard() {
+    const text = [];
+    text.push('=== 桶 ===');
+    entries.forEach(e => {
+      text.push(`[${e.date} ${e.time}] [${e.status}] ${e.text}${e.starred ? ' ★' : ''}${(e.tags || []).length > 0 ? ' #' + e.tags.join(' #') : ''}`);
+    });
+    text.push('');
+    text.push('=== 记 ===');
+    notes.forEach(n => {
+      text.push(`[${n.date} ${n.time}] ${n.text}${n.starred ? ' ★' : ''}${(n.tags || []).length > 0 ? ' #' + n.tags.join(' #') : ''}`);
+    });
+    text.push('');
+    text.push(`=== 木鱼 ===`);
+    text.push(`计数: ${fishCount}`);
+    fishMarks.forEach(m => {
+      text.push(`[${m.date} ${m.time}] ${m.count}`);
+    });
+    
+    const fullText = text.join('\n');
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(fullText).then(() => {
+        alert(prefs.lang === 'zh' ? '已复制到剪贴板' : 'Copied to clipboard');
+      }).catch(() => {
+        fallbackCopy(fullText);
+      });
+    } else {
+      fallbackCopy(fullText);
+    }
+  }
+  
+  function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      alert(prefs.lang === 'zh' ? '已复制到剪贴板' : 'Copied to clipboard');
+    } catch(e) {
+      alert(prefs.lang === 'zh' ? '复制失败' : 'Copy failed');
+    }
+    document.body.removeChild(textarea);
+  }
 
   function importData(file) {
     const reader = new FileReader();
@@ -2364,6 +2443,7 @@ body {
   });
 
   $('export-btn').addEventListener('click', exportData);
+  $('copy-btn').addEventListener('click', copyToClipboard);
   $('import-btn').addEventListener('click', () => $('import-file').click());
   $('import-file').addEventListener('change', e => {
     if (e.target.files.length > 0) {
@@ -2390,6 +2470,11 @@ body {
 
   // 木鱼音效
   let audioCtx = null;
+  function vibrateLight() {
+    try {
+      if (navigator.vibrate) navigator.vibrate(10);
+    } catch(e) {}
+  }
   function playFishSound() {
     try {
       if (!audioCtx) {
@@ -2433,6 +2518,7 @@ body {
     fishCountEl.textContent = fishCount;
     saveFish();
     playFishSound();
+    vibrateLight();
     if (fishCount % 3 === 0) {
       showZen();
     }
