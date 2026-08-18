@@ -6,7 +6,7 @@
 <title>今日桶 · Daily Bin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Noto+Serif+SC:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #F7F5F0;
@@ -714,6 +714,7 @@ body {
       <button class="btn-text" id="history-btn" data-i18n="history">历史</button>
       <button class="btn-text" id="search-btn" data-i18n="search">搜索</button>
       <button class="btn-text" id="random-btn" data-i18n="random">随机回看</button>
+      <button class="btn-text" id="onthisday-btn" data-i18n="onthisday">那年今日</button>
       <button class="btn-text" id="export-btn" data-i18n="export">导出</button>
       <button class="btn-text" id="import-btn" data-i18n="import">导入</button>
     </div>
@@ -776,11 +777,20 @@ body {
       <div class="empty-hint hidden" id="search-empty" data-i18n="search_empty">没有找到匹配的内容。</div>
     </div>
   </div>
+  <!-- 那年今日视图 -->
+  <div id="onthisday-view" class="hidden">
+    <div class="main">
+      <div class="prompt" data-i18n="onthisday_title">那年今日</div>
+      <div id="onthisday-list"></div>
+      <div class="empty-hint hidden" id="onthisday-empty" data-i18n="onthisday_empty">往年的今天，什么都没有。</div>
+    </div>
+  </div>
 
   <!-- 底部导航 -->
   <div class="footer-nav">
     <button id="nav-bin" class="active" data-i18n="nav_bin">桶</button>
     <button id="nav-note" data-i18n="nav_note">记</button>
+    <button id="nav-onthisday" data-i18n="nav_onthisday">那年今日</button>
   </div>
 
   <!-- 随机回看弹窗 -->
@@ -909,7 +919,9 @@ body {
       note_label: '随记', note_empty: '还没有随记。',
       edit: '编辑', delete: '删除', save: '保存', cancel: '取消',
       search_title: '搜索', search_placeholder: '输入关键词…', search_empty: '没有找到匹配的内容。',
-      random_label: '随机回看', random_again: '换一条', close: '关闭',
+      random_label: '随机回看',       onthisday: '那年今日',
+      onthisday_title: '那年今日',
+      onthisday_empty: '往年的今天，什么都没有。',random_again: '换一条', close: '关闭',
       all_tags: '全部', add_tag: '加标签', tag_placeholder: '标签名'
     },
     en: {
@@ -929,7 +941,9 @@ body {
       note_label: 'Notes', note_empty: 'No notes yet.',
       edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel',
       search_title: 'Search', search_placeholder: 'Type keyword…', search_empty: 'No matches found.',
-      random_label: 'Random Recall', random_again: 'Another', close: 'Close',
+      random_label: 'Random Recall',       onthisday: 'On This Day',
+      onthisday_title: 'On This Day',
+      onthisday_empty: 'On this day in previous years, nothing was recorded.', random_again: 'Another', close: 'Close',
       all_tags: 'All', add_tag: 'Tag', tag_placeholder: 'Tag name'
     }
   };
@@ -949,7 +963,7 @@ body {
   const $ = id => document.getElementById(id);
   const clockEl = $('clock'), dateEl = $('date');
   const mainView = $('main-view'), noteView = $('note-view'), reviewView = $('review-view'),
-        historyView = $('history-view'), searchView = $('search-view');
+        historyView = $('history-view'), searchView = $('search-view'), onthisdayView = $('onthisday-view');
   const entryInput = $('entry-input');
   const todayList = $('today-list'), emptyHint = $('empty-hint');
   const reviewList = $('review-list'), reviewCount = $('review-count');
@@ -1007,6 +1021,89 @@ body {
     renderNoteList();
     renderTagFilters();
     renderSearchResults();
+      function renderOnThisDay() {
+    const list = $('onthisday-list');
+    const empty = $('onthisday-empty');
+    list.innerHTML = '';
+    
+    const now = new Date();
+    const currentMMDD = `${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const currentYear = now.getFullYear();
+    
+    // 收集所有非 pending 的 entries 和所有 notes
+    const allItems = [];
+    entries.filter(e => e.status !== 'pending').forEach(e => {
+      allItems.push({ text: e.text, date: e.date, time: e.time, type: 'entry', status: e.status });
+    });
+    notes.forEach(n => {
+      allItems.push({ text: n.text, date: n.date, time: n.time, type: 'note' });
+    });
+    
+    // 筛选：月-日相同，但年份不同
+    const matched = allItems.filter(item => {
+      if (!item.date) return false;
+      const parts = item.date.split('-');
+      if (parts.length !== 3) return false;
+      const itemMMDD = `${parts[1]}-${parts[2]}`;
+      const itemYear = parseInt(parts[0]);
+      return itemMMDD === currentMMDD && itemYear !== currentYear;
+    });
+    
+    if (matched.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    
+    // 按年份分组
+    const yearGroups = {};
+    matched.forEach(item => {
+      const year = item.date.split('-')[0];
+      if (!yearGroups[year]) yearGroups[year] = [];
+      yearGroups[year].push(item);
+    });
+    
+    Object.keys(yearGroups).sort().reverse().forEach(year => {
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'history-group';
+      
+      const yearDiv = document.createElement('div');
+      yearDiv.className = 'history-date';
+      yearDiv.textContent = `${year}${prefs.lang === 'zh' ? '年' : ''}`;
+      groupDiv.appendChild(yearDiv);
+      
+      yearGroups[year].forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'history-item';
+        
+        const typeSpan = document.createElement('span');
+        typeSpan.className = 'history-status';
+        typeSpan.textContent = item.type === 'entry' ? t('nav_bin') : t('nav_note');
+        if (item.type === 'entry' && item.status === 'kept') {
+          typeSpan.classList.add('kept');
+        } else if (item.type === 'entry' && item.status === 'discarded') {
+          typeSpan.classList.add('discarded');
+        } else {
+          typeSpan.classList.add('transferred');
+        }
+        
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'entry-time';
+        timeSpan.textContent = item.time;
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'entry-text';
+        textSpan.textContent = item.text;
+        
+        itemDiv.appendChild(typeSpan);
+        itemDiv.appendChild(timeSpan);
+        itemDiv.appendChild(textSpan);
+        groupDiv.appendChild(itemDiv);
+      });
+      
+      list.appendChild(groupDiv);
+    });
+  }
   }
 
   function renderTagFilters() {
@@ -1479,11 +1576,13 @@ body {
     reviewView.classList.add('hidden');
     historyView.classList.add('hidden');
     searchView.classList.add('hidden');
+    onthisdayView.classList.add('hidden');
     if (view === 'main') mainView.classList.remove('hidden');
     if (view === 'note') noteView.classList.remove('hidden');
     if (view === 'review') reviewView.classList.remove('hidden');
     if (view === 'history') historyView.classList.remove('hidden');
     if (view === 'search') searchView.classList.remove('hidden');
+    if (view === 'onthisday') onthisdayView.classList.remove('hidden');
     
     navBin.classList.toggle('active', view === 'main' || view === 'review' || view === 'history' || view === 'search');
     navNote.classList.toggle('active', view === 'note');
@@ -1588,6 +1687,10 @@ body {
   searchInput.addEventListener('input', renderSearchResults);
 
   $('random-btn').addEventListener('click', showRandom);
+  $('onthisday-btn').addEventListener('click', () => {
+    showView('onthisday');
+    renderOnThisDay();
+  });
   $('random-close-btn').addEventListener('click', () => randomOverlay.classList.add('hidden'));
   $('random-again-btn').addEventListener('click', showRandom);
   randomOverlay.addEventListener('click', e => {
@@ -1617,7 +1720,7 @@ body {
 
   navBin.addEventListener('click', () => showView('main'));
   navNote.addEventListener('click', () => showView('note'));
-
+  navOnThisDay.addEventListener('click', () => showView('onthisday'));
   // ========== 初始化 ==========
   loadPrefs();
   loadData();
