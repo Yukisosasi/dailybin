@@ -725,6 +725,16 @@ body {
 .fish-btn:active {
   transform: scale(0.92);
 }
+.fish-zen {
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-align: center;
+  min-height: 24px;
+  max-width: 320px;
+  transition: opacity 0.4s;
+  opacity: 0.7;
+}
 .fish-marks {
   width: 100%;
   max-width: 320px;
@@ -912,6 +922,7 @@ body {
     <div class="main fish-main">
       <div class="fish-count" id="fish-count">0</div>
       <button class="fish-btn" id="fish-btn"></button>
+      <div class="fish-zen" id="fish-zen"></div>
       <button class="btn-text" id="fish-mark-btn" data-i18n="fish_mark">记下这个数</button>
       <div class="fish-marks" id="fish-marks"></div>
     </div>
@@ -952,6 +963,47 @@ body {
   let currentHistoryFilter = 'all'; // 'all' | 'starred'
   let fishCount = 0;
   let fishMarks = []; // { count, time, date }
+  const zenQuotes = [
+    '一切有为法，如梦幻泡影',
+    '应无所住而生其心',
+    '本来无一物，何处惹尘埃',
+    '色即是空，空即是色',
+    '过去心不可得，现在心不可得，未来心不可得',
+    '放下，便得自在',
+    '一念放下，万般自在',
+    '不是风动，不是幡动，仁者心动',
+    '平常心是道',
+    '日日是好日',
+    '喝茶去',
+    '无事此静坐，一日是两日',
+    '心随境转是凡夫，境随心转是圣贤',
+    '春有百花秋有月，夏有凉风冬有雪',
+    '若无闲事挂心头，便是人间好时节',
+    '空手把锄头，步行骑水牛',
+    '千江有水千江月，万里无云万里天',
+    '菩提本无树，明镜亦非台',
+    '一花一世界，一叶一菩提',
+    '迷时师度，悟了自度',
+    '随缘不变，不变随缘',
+    '万物静观皆自得',
+    '静坐常思己过，闲谈莫论人非',
+    '多言数穷，不如守中',
+    '大音希声，大象无形',
+    '知足常乐',
+    '心安即是归处',
+    '莫向外求',
+    '万法皆空，因果不空',
+    '善护念'
+  ];
+  function showZen() {
+    const el = $('fish-zen');
+    const quote = zenQuotes[Math.floor(Math.random() * zenQuotes.length)];
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.textContent = quote;
+      el.style.opacity = '0.7';
+    }, 200);
+  }
   
 
   // ========== 工具 ==========
@@ -1961,6 +2013,7 @@ body {
     fishCountEl.textContent = fishCount;
     saveFish();
     playFishSound();
+    showZen();
   });
     fishMarkBtn.addEventListener('click', () => {
     fishMarks.push({
@@ -1981,6 +2034,7 @@ body {
   renderAll();
   fishCountEl.textContent = fishCount;
   renderFishMarks();
+  showZen();
 })();
 </script>
 </body>
