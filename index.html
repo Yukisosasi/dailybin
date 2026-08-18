@@ -1577,11 +1577,13 @@ body {
     historyView.classList.add('hidden');
     searchView.classList.add('hidden');
     onthisdayView.classList.add('hidden');
+    onthisdayView.classList.add('hidden');
     if (view === 'main') mainView.classList.remove('hidden');
     if (view === 'note') noteView.classList.remove('hidden');
     if (view === 'review') reviewView.classList.remove('hidden');
     if (view === 'history') historyView.classList.remove('hidden');
     if (view === 'search') searchView.classList.remove('hidden');
+    if (view === 'onthisday') onthisdayView.classList.remove('hidden');
     if (view === 'onthisday') onthisdayView.classList.remove('hidden');
     
     navBin.classList.toggle('active', view === 'main' || view === 'review' || view === 'history' || view === 'search');
@@ -1687,6 +1689,10 @@ body {
   searchInput.addEventListener('input', renderSearchResults);
 
   $('random-btn').addEventListener('click', showRandom);
+  $('onthisday-btn').addEventListener('click', () => {
+    showView('onthisday');
+    renderOnThisDay();
+  });
   $('onthisday-btn').addEventListener('click', () => {
     showView('onthisday');
     renderOnThisDay();
