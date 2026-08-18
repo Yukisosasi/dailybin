@@ -823,6 +823,46 @@ body {
   display: none;
 }
 
+/* 批量编辑 */
+.batch-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.batch-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.batch-mode .entry-item,
+.batch-mode .note-item,
+.batch-mode .history-item {
+  padding-left: 0;
+}
+.batch-mode .history-item {
+  align-items: center;
+}
+.batch-checkbox-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.batch-checkbox-cell .entry-text,
+.batch-checkbox-cell .note-text {
+  flex: 1;
+}
+.batch-selected-count {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
 .hidden { display: none; }
 
 @media (max-width: 480px) {
@@ -894,6 +934,13 @@ body {
 
     <div class="section-label" data-i18n="note_label">随记</div>
     <div class="tag-filter-row hidden" id="note-tag-filter-row"></div>
+    <button class="btn-text" id="note-batch-toggle" data-i18n="batch_edit">批量编辑</button>
+    <div class="batch-bar hidden" id="note-batch-bar">
+      <button class="btn-text" id="note-batch-all" data-i18n="select_all">全选</button>
+      <button class="btn-text" id="note-batch-none" data-i18n="select_none">取消全选</button>
+      <button class="btn-text" id="note-batch-delete" data-i18n="delete_selected">删除所选</button>
+      <span class="batch-selected-count" id="note-batch-count"></span>
+    </div>
     <div id="note-list"></div>
     <div class="empty-hint hidden" id="note-empty" data-i18n="note_empty">还没有随记。</div>
   </div>
@@ -914,9 +961,16 @@ body {
   <div id="history-view" class="hidden">
     <div class="main">
       <div class="prompt" data-i18n="history_title">历史</div>
-      <div class="tag-filter-row" id="history-filter-row">
+    <div class="tag-filter-row" id="history-filter-row">
         <button class="tag-filter-btn active" id="history-filter-all" data-i18n="all_tags">全部</button>
         <button class="tag-filter-btn" id="history-filter-starred">★</button>
+      </div>
+      <button class="btn-text" id="history-batch-toggle" data-i18n="batch_edit">批量编辑</button>
+      <div class="batch-bar hidden" id="history-batch-bar">
+        <button class="btn-text" id="history-batch-all" data-i18n="select_all">全选</button>
+        <button class="btn-text" id="history-batch-none" data-i18n="select_none">取消全选</button>
+        <button class="btn-text" id="history-batch-delete" data-i18n="delete_selected">删除所选</button>
+        <span class="batch-selected-count" id="history-batch-count"></span>
       </div>
       <div id="history-list"></div>
       <div class="empty-hint hidden" id="history-empty" data-i18n="history_empty">还没有历史记录。</div>
@@ -1000,6 +1054,8 @@ body {
   let currentTagFilter = null; // null = 全部
   let currentNoteTagFilter = null;
   let currentHistoryFilter = 'all'; // 'all' | 'starred'
+  let batchMode = { note: false, history: false };
+  let batchSelected = { note: new Set(), history: new Set() };
   let fishCount = 0;
   let fishMarks = []; // { count, time, date }
   let currentZen = '';
@@ -1155,6 +1211,7 @@ body {
       confirm_clear: '确定清空所有历史吗？此操作不可恢复。',
       export: '导出', import: '导入',
       nav_bin: '桶', nav_note: '记', nav_fish: '鱼', fish_mark: '记下这个数', fish_zen_save: '收下这句',
+      batch_edit: '批量编辑', select_all: '全选', select_none: '取消全选', delete_selected: '删除所选',
       note_prompt: '写点什么…', note_placeholder: '随记，可以写长一点', note_add: '放下',
       note_label: '随记', note_empty: '还没有随记。',
       edit: '编辑', delete: '删除', save: '保存', cancel: '取消',
@@ -1176,8 +1233,8 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
-      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number', fish_zen_save: 'Keep this note',
-      note_prompt: 'Write something…', note_placeholder: 'A note, can be longer', note_add: 'Put down',
+      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number', fish_zen_save: 'Keep this',
+      batch_edit: 'Batch Edit', select_all: 'Select All', select_none: 'Select None', delete_selected: 'Delete Selected',      note_prompt: 'Write something…', note_placeholder: 'A note, can be longer', note_add: 'Put down',
       note_label: 'Notes', note_empty: 'No notes yet.',
       edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel',
       search_title: 'Search', search_placeholder: 'Type keyword…', search_empty: 'No matches found.',
@@ -1599,6 +1656,22 @@ body {
           const itemDiv = document.createElement('div');
           itemDiv.className = 'history-item';
           
+          if (batchMode.history) {
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'batch-checkbox';
+            checkbox.checked = batchSelected.history.has(e.id);
+            checkbox.addEventListener('change', () => {
+              if (checkbox.checked) {
+                batchSelected.history.add(e.id);
+              } else {
+                batchSelected.history.delete(e.id);
+              }
+              updateBatchCount('history');
+            });
+            itemDiv.appendChild(checkbox);
+          }
+          
           const statusSpan = document.createElement('span');
           const cls = e.status === 'kept' ? 'kept' : (e.status === 'discarded' ? 'discarded' : 'transferred');
           statusSpan.className = 'history-status ' + cls;
@@ -1701,6 +1774,22 @@ body {
           // 这里保持原来的渲染逻辑，把 groupDiv 改成 content
           const itemDiv = document.createElement('div');
           itemDiv.className = 'note-item';
+          
+          if (batchMode.note) {
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'batch-checkbox';
+            checkbox.checked = batchSelected.note.has(n.id);
+            checkbox.addEventListener('change', () => {
+              if (checkbox.checked) {
+                batchSelected.note.add(n.id);
+              } else {
+                batchSelected.note.delete(n.id);
+              }
+              updateBatchCount('note');
+            });
+            itemDiv.appendChild(checkbox);
+          }
           
           if (editingNoteId === n.id) {
             const editArea = document.createElement('textarea');
@@ -1867,6 +1956,55 @@ body {
     }
   }
 
+  function updateBatchCount(type) {
+    const count = batchSelected[type].size;
+    const el = $(`${type}-batch-count`);
+    if (el) {
+      el.textContent = prefs.lang === 'zh' ? `已选 ${count} 条` : `${count} selected`;
+    }
+  }
+  function exitBatchMode(type) {
+    batchMode[type] = false;
+    batchSelected[type].clear();
+    $(`${type}-batch-toggle`).textContent = t('batch_edit');
+    $(`${type}-batch-bar`).classList.add('hidden');
+    renderAll();
+  }
+  function toggleBatchMode(type) {
+    batchMode[type] = !batchMode[type];
+    batchSelected[type].clear();
+    if (batchMode[type]) {
+      $(`${type}-batch-toggle`).textContent = prefs.lang === 'zh' ? '完成' : 'Done';
+      $(`${type}-batch-bar`).classList.remove('hidden');
+    } else {
+      $(`${type}-batch-toggle`).textContent = t('batch_edit');
+      $(`${type}-batch-bar`).classList.add('hidden');
+    }
+    renderAll();
+  }
+  function selectAllInBatch(type) {
+    const ids = type === 'note' ? notes.map(n => n.id) : entries.filter(e => e.status !== 'pending').map(e => e.id);
+    batchSelected[type] = new Set(ids);
+    updateBatchCount(type);
+    renderAll();
+  }
+  function selectNoneInBatch(type) {
+    batchSelected[type].clear();
+    updateBatchCount(type);
+    renderAll();
+  }
+  function deleteSelectedInBatch(type) {
+    if (batchSelected[type].size === 0) return;
+    const confirmMsg = prefs.lang === 'zh' ? `确定删除选中的 ${batchSelected[type].size} 条吗？` : `Delete ${batchSelected[type].size} selected items?`;
+    if (!confirm(confirmMsg)) return;
+    if (type === 'note') {
+      notes = notes.filter(n => !batchSelected.note.has(n.id));
+    } else {
+      entries = entries.filter(e => !batchSelected.history.has(e.id));
+    }
+    saveData();
+    exitBatchMode(type);
+  }
   function renderFishMarks() {
     fishMarksEl.innerHTML = '';
     fishMarks.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)).forEach(m => {
