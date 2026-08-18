@@ -792,6 +792,37 @@ body {
   opacity: 0.6;
 }
 
+/* 折叠分组 */
+.collapse-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  cursor: pointer;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+  user-select: none;
+  transition: color 0.2s;
+}
+.collapse-header:hover {
+  color: var(--accent);
+}
+.collapse-header .collapse-arrow {
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 0.3s;
+  display: inline-block;
+}
+.collapse-header.collapsed .collapse-arrow {
+  transform: rotate(-90deg);
+}
+.collapse-content {
+  overflow: hidden;
+}
+.collapse-content.collapsed {
+  display: none;
+}
+
 .hidden { display: none; }
 
 @media (max-width: 480px) {
@@ -1145,7 +1176,7 @@ body {
       keep: 'Keep', discard: 'Discard', transfer: 'To Notes',
       kept: 'Kept', discarded: 'Discarded', transferred: 'Noted',
       confirm_clear: 'Clear all history? This cannot be undone.',
-      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number', fish_zen_save: 'Keep this',
+      nav_bin: 'Bin', nav_note: 'Notes', nav_fish: 'Fish', fish_mark: 'Mark this number', fish_zen_save: 'Keep this note',
       note_prompt: 'Write something…', note_placeholder: 'A note, can be longer', note_add: 'Put down',
       note_label: 'Notes', note_empty: 'No notes yet.',
       edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel',
@@ -1516,60 +1547,94 @@ body {
     historyList.innerHTML = '';
     historyEmpty.classList.toggle('hidden', groups.length !== 0);
     
+    // 按月分组
+    const monthGroups = {};
     groups.forEach(g => {
-      const groupDiv = document.createElement('div');
-      groupDiv.className = 'history-group';
+      const month = g.date.substring(0, 7); // YYYY-MM
+      if (!monthGroups[month]) monthGroups[month] = [];
+      monthGroups[month].push(g);
+    });
+    
+    const months = Object.keys(monthGroups).sort().reverse();
+    months.forEach((month, monthIndex) => {
+      const monthDiv = document.createElement('div');
+      monthDiv.className = 'history-group';
       
-      const dateDiv = document.createElement('div');
-      dateDiv.className = 'history-date';
-      const parts = g.date.split('-');
-      const y = parts[0], m = parseInt(parts[1]), d = parseInt(parts[2]);
-      if (prefs.lang === 'zh') {
-        dateDiv.textContent = `${y}年${m}月${d}日`;
-      } else {
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        dateDiv.textContent = `${months[m-1]} ${d}, ${y}`;
-      }
-      groupDiv.appendChild(dateDiv);
+      const header = document.createElement('div');
+      header.className = 'collapse-header' + (monthIndex > 1 ? ' collapsed' : '');
+      const parts = month.split('-');
+      const y = parts[0], m = parseInt(parts[1]);
+      const headerText = document.createElement('span');
+      headerText.textContent = prefs.lang === 'zh' ? `${y}年${m}月` : `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]} ${y}`;
+      const arrow = document.createElement('span');
+      arrow.className = 'collapse-arrow';
+      arrow.textContent = '▾';
+      header.appendChild(headerText);
+      header.appendChild(arrow);
       
-      g.items.sort((a,b) => a.time.localeCompare(b.time)).forEach(e => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'history-item';
-        
-        const statusSpan = document.createElement('span');
-        const cls = e.status === 'kept' ? 'kept' : (e.status === 'discarded' ? 'discarded' : 'transferred');
-        statusSpan.className = 'history-status ' + cls;
-        statusSpan.textContent = t(e.status);
-        
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'entry-time';
-        timeSpan.textContent = e.time;
-        
-        const textSpan = document.createElement('span');
-        textSpan.className = 'entry-text';
-        textSpan.textContent = e.text;
-        
-        itemDiv.appendChild(statusSpan);
-        itemDiv.appendChild(timeSpan);
-        itemDiv.appendChild(textSpan);
-        
-        if (e.starred) {
-          const starSpan = document.createElement('button');
-          starSpan.className = 'history-star-btn';
-          starSpan.textContent = '★';
-          starSpan.title = prefs.lang === 'zh' ? '取消收藏' : 'Unstar';
-          starSpan.addEventListener('click', () => {
-            e.starred = false;
-            saveData();
-            renderAll();
-          });
-          itemDiv.appendChild(starSpan);
-        }
-        
-        groupDiv.appendChild(itemDiv);
+      const content = document.createElement('div');
+      content.className = 'collapse-content' + (monthIndex > 1 ? ' collapsed' : '');
+      
+      header.addEventListener('click', () => {
+        header.classList.toggle('collapsed');
+        content.classList.toggle('collapsed');
       });
       
-      historyList.appendChild(groupDiv);
+      monthDiv.appendChild(header);
+      
+      monthGroups[month].forEach(g => {
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'history-date';
+        const dParts = g.date.split('-');
+        const dy = dParts[0], dm = parseInt(dParts[1]), dd = parseInt(dParts[2]);
+        if (prefs.lang === 'zh') {
+          dateDiv.textContent = `${dm}月${dd}日`;
+        } else {
+          const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          dateDiv.textContent = `${months[dm-1]} ${dd}`;
+        }
+        content.appendChild(dateDiv);
+        
+        g.items.sort((a,b) => a.time.localeCompare(b.time)).forEach(e => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'history-item';
+          
+          const statusSpan = document.createElement('span');
+          const cls = e.status === 'kept' ? 'kept' : (e.status === 'discarded' ? 'discarded' : 'transferred');
+          statusSpan.className = 'history-status ' + cls;
+          statusSpan.textContent = t(e.status);
+          
+          const timeSpan = document.createElement('span');
+          timeSpan.className = 'entry-time';
+          timeSpan.textContent = e.time;
+          
+          const textSpan = document.createElement('span');
+          textSpan.className = 'entry-text';
+          textSpan.textContent = e.text;
+          
+          itemDiv.appendChild(statusSpan);
+          itemDiv.appendChild(timeSpan);
+          itemDiv.appendChild(textSpan);
+          
+          if (e.starred) {
+            const starBtn = document.createElement('button');
+            starBtn.className = 'history-star-btn';
+            starBtn.textContent = '★';
+            starBtn.title = prefs.lang === 'zh' ? '取消收藏' : 'Unstar';
+            starBtn.addEventListener('click', () => {
+              e.starred = false;
+              saveData();
+              renderAll();
+            });
+            itemDiv.appendChild(starBtn);
+          }
+          
+          content.appendChild(itemDiv);
+        });
+      });
+      
+      monthDiv.appendChild(content);
+      historyList.appendChild(monthDiv);
     });
   }
 
@@ -1584,141 +1649,176 @@ body {
     noteList.innerHTML = '';
     noteEmpty.classList.toggle('hidden', groups.length !== 0);
     
+    // 按月分组
+    const monthGroups = {};
     groups.forEach(g => {
-      const groupDiv = document.createElement('div');
-      groupDiv.className = 'note-group';
+      const month = g.date.substring(0, 7);
+      if (!monthGroups[month]) monthGroups[month] = [];
+      monthGroups[month].push(g);
+    });
+    
+    const months = Object.keys(monthGroups).sort().reverse();
+    months.forEach((month, monthIndex) => {
+      const monthDiv = document.createElement('div');
+      monthDiv.className = 'note-group';
       
-      const dateDiv = document.createElement('div');
-      dateDiv.className = 'note-date';
-      const parts = g.date.split('-');
-      const y = parts[0], m = parseInt(parts[1]), d = parseInt(parts[2]);
-      if (prefs.lang === 'zh') {
-        dateDiv.textContent = `${y}年${m}月${d}日`;
-      } else {
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        dateDiv.textContent = `${months[m-1]} ${d}, ${y}`;
-      }
-      groupDiv.appendChild(dateDiv);
+      const header = document.createElement('div');
+      header.className = 'collapse-header' + (monthIndex > 1 ? ' collapsed' : '');
+      const parts = month.split('-');
+      const y = parts[0], m = parseInt(parts[1]);
+      const headerText = document.createElement('span');
+      headerText.textContent = prefs.lang === 'zh' ? `${y}年${m}月` : `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]} ${y}`;
+      const arrow = document.createElement('span');
+      arrow.className = 'collapse-arrow';
+      arrow.textContent = '▾';
+      header.appendChild(headerText);
+      header.appendChild(arrow);
       
-      g.items.sort((a,b) => a.time.localeCompare(b.time)).forEach(n => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'note-item';
-        
-        if (editingNoteId === n.id) {
-          const editArea = document.createElement('textarea');
-          editArea.className = 'note-edit-area';
-          editArea.value = n.text;
-          
-          const editActions = document.createElement('div');
-          editActions.className = 'note-edit-actions';
-          
-          const saveBtn = document.createElement('button');
-          saveBtn.className = 'save-edit';
-          saveBtn.textContent = t('save');
-          saveBtn.addEventListener('click', () => {
-            n.text = editArea.value.trim() || n.text;
-            saveData();
-            editingNoteId = null;
-            renderAll();
-          });
-          
-          const cancelBtn = document.createElement('button');
-          cancelBtn.className = 'cancel-edit';
-          cancelBtn.textContent = t('cancel');
-          cancelBtn.addEventListener('click', () => {
-            editingNoteId = null;
-            renderAll();
-          });
-          
-          editActions.appendChild(saveBtn);
-          editActions.appendChild(cancelBtn);
-          
-          itemDiv.appendChild(editArea);
-          itemDiv.appendChild(editActions);
-        } else {
-          const timeDiv = document.createElement('div');
-          timeDiv.className = 'note-time';
-          
-          const timeSpan = document.createElement('span');
-          timeSpan.textContent = n.time;
-          timeDiv.appendChild(timeSpan);
-          
-          const starBtn = document.createElement('button');
-          starBtn.className = 'note-star' + (n.starred ? ' starred' : '');
-          starBtn.textContent = '★';
-          starBtn.addEventListener('click', () => {
-            n.starred = !n.starred;
-            saveData();
-            renderAll();
-          });
-          timeDiv.appendChild(starBtn);
-          
-          const textDiv = document.createElement('div');
-          textDiv.className = 'note-text';
-          textDiv.textContent = n.text;
-          
-          if ((n.tags || []).length > 0) {
-            const tagsDiv = document.createElement('div');
-            tagsDiv.className = 'entry-tags';
-            n.tags.forEach(tag => {
-              const tagBtn = document.createElement('button');
-              tagBtn.className = 'entry-tag';
-              tagBtn.textContent = tag;
-              tagBtn.addEventListener('click', () => {
-                currentNoteTagFilter = tag;
-                renderAll();
-              });
-              tagsDiv.appendChild(tagBtn);
-            });
-            textDiv.appendChild(tagsDiv);
-          }
-          
-          const actionsDiv = document.createElement('div');
-          actionsDiv.className = 'note-actions';
-          
-          const editBtn = document.createElement('button');
-          editBtn.textContent = t('edit');
-          editBtn.addEventListener('click', () => {
-            editingNoteId = n.id;
-            renderAll();
-          });
-          
-          const tagBtn = document.createElement('button');
-          tagBtn.textContent = t('add_tag');
-          tagBtn.addEventListener('click', () => {
-            const tagName = prompt(t('tag_placeholder'));
-            if (tagName && tagName.trim()) {
-              if (!n.tags) n.tags = [];
-              if (!n.tags.includes(tagName.trim())) {
-                n.tags.push(tagName.trim());
-                saveData();
-                renderAll();
-              }
-            }
-          });
-          
-          const delBtn = document.createElement('button');
-          delBtn.className = 'delete-note';
-          delBtn.textContent = t('delete');
-          delBtn.addEventListener('click', () => {
-            notes = notes.filter(x => x.id !== n.id);
-            saveData();
-            renderAll();
-          });
-          
-          actionsDiv.appendChild(editBtn);
-          actionsDiv.appendChild(tagBtn);
-          actionsDiv.appendChild(delBtn);
-          
-          itemDiv.appendChild(timeDiv);
-          itemDiv.appendChild(textDiv);
-          itemDiv.appendChild(actionsDiv);
-        }
-        
-        groupDiv.appendChild(itemDiv);
+      const content = document.createElement('div');
+      content.className = 'collapse-content' + (monthIndex > 1 ? ' collapsed' : '');
+      
+      header.addEventListener('click', () => {
+        header.classList.toggle('collapsed');
+        content.classList.toggle('collapsed');
       });
       
-      noteList.appendChild(groupDiv);
+      monthDiv.appendChild(header);
+      
+      monthGroups[month].forEach(g => {
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'note-date';
+        const dParts = g.date.split('-');
+        const dm = parseInt(dParts[1]), dd = parseInt(dParts[2]);
+        if (prefs.lang === 'zh') {
+          dateDiv.textContent = `${dm}月${dd}日`;
+        } else {
+          const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          dateDiv.textContent = `${months[dm-1]} ${dd}`;
+        }
+        content.appendChild(dateDiv);
+        
+        g.items.sort((a,b) => a.time.localeCompare(b.time)).forEach(n => {
+          // 这里保持原来的渲染逻辑，把 groupDiv 改成 content
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'note-item';
+          
+          if (editingNoteId === n.id) {
+            const editArea = document.createElement('textarea');
+            editArea.className = 'note-edit-area';
+            editArea.value = n.text;
+            
+            const editActions = document.createElement('div');
+            editActions.className = 'note-edit-actions';
+            
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'save-edit';
+            saveBtn.textContent = t('save');
+            saveBtn.addEventListener('click', () => {
+              n.text = editArea.value.trim() || n.text;
+              saveData();
+              editingNoteId = null;
+              renderAll();
+            });
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-edit';
+            cancelBtn.textContent = t('cancel');
+            cancelBtn.addEventListener('click', () => {
+              editingNoteId = null;
+              renderAll();
+            });
+            
+            editActions.appendChild(saveBtn);
+            editActions.appendChild(cancelBtn);
+            
+            itemDiv.appendChild(editArea);
+            itemDiv.appendChild(editActions);
+          } else {
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'note-time';
+            
+            const timeSpan = document.createElement('span');
+            timeSpan.textContent = n.time;
+            timeDiv.appendChild(timeSpan);
+            
+            const starBtn = document.createElement('button');
+            starBtn.className = 'note-star' + (n.starred ? ' starred' : '');
+            starBtn.textContent = '★';
+            starBtn.addEventListener('click', () => {
+              n.starred = !n.starred;
+              saveData();
+              renderAll();
+            });
+            timeDiv.appendChild(starBtn);
+            
+            const textDiv = document.createElement('div');
+            textDiv.className = 'note-text';
+            textDiv.textContent = n.text;
+            
+            if ((n.tags || []).length > 0) {
+              const tagsDiv = document.createElement('div');
+              tagsDiv.className = 'entry-tags';
+              n.tags.forEach(tag => {
+                const tagBtn = document.createElement('button');
+                tagBtn.className = 'entry-tag';
+                tagBtn.textContent = tag;
+                tagBtn.addEventListener('click', () => {
+                  currentNoteTagFilter = tag;
+                  renderAll();
+                });
+                tagsDiv.appendChild(tagBtn);
+              });
+              textDiv.appendChild(tagsDiv);
+            }
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'note-actions';
+            
+            const editBtn = document.createElement('button');
+            editBtn.textContent = t('edit');
+            editBtn.addEventListener('click', () => {
+              editingNoteId = n.id;
+              renderAll();
+            });
+            
+            const tagBtn = document.createElement('button');
+            tagBtn.textContent = t('add_tag');
+            tagBtn.addEventListener('click', () => {
+              const tagName = prompt(t('tag_placeholder'));
+              if (tagName && tagName.trim()) {
+                if (!n.tags) n.tags = [];
+                if (!n.tags.includes(tagName.trim())) {
+                  n.tags.push(tagName.trim());
+                  saveData();
+                  renderAll();
+                }
+              }
+            });
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-note';
+            delBtn.textContent = t('delete');
+            delBtn.addEventListener('click', () => {
+              notes = notes.filter(x => x.id !== n.id);
+              saveData();
+              renderAll();
+            });
+            
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(tagBtn);
+            actionsDiv.appendChild(delBtn);
+            
+            itemDiv.appendChild(timeDiv);
+            itemDiv.appendChild(textDiv);
+            itemDiv.appendChild(actionsDiv);
+          }
+          
+          content.appendChild(itemDiv);
+        });
+      });
+      
+      monthDiv.appendChild(content);
+      noteList.appendChild(monthDiv);
     });
   }
 
