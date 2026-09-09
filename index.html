@@ -248,6 +248,7 @@ body {
 }
 .entry-text-row .entry-text {
   flex: 0 1 auto;
+
 }
 .empty-hint {
   color: var(--muted);
@@ -621,6 +622,7 @@ body {
   border-color: var(--accent);
   color: var(--accent);
 }
+
 .share-card .share-hint {
   font-size: 12px;
   color: var(--muted);
@@ -635,6 +637,7 @@ body {
   -webkit-touch-callout: default;
   user-select: none;
 }
+
 
 /* 标签管理 */
 .tag-filter-row {
@@ -691,6 +694,7 @@ body {
   padding: 10px 0;
   align-items: baseline;
 }
+
 .history-content-wrapper {
   flex: 1;
   min-width: 0;
@@ -741,6 +745,7 @@ body {
   margin: 4px 0 8px 48px;
   font-size: 11px;
 }
+
 .history-status {
   font-size: 12px;
   letter-spacing: 0.08em;
@@ -999,6 +1004,7 @@ body {
 .note-detail-actions { margin-top: 36px; display: flex; gap: 12px; flex-wrap: wrap; }
 .note-item-clickable { cursor: pointer; }
 .note-item-clickable:hover { color: var(--accent); }
+
 </style>
 <link rel="stylesheet" href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@400;500;600&display=swap">
 </head>
@@ -1535,8 +1541,9 @@ body {
     renderHistoryList();
     renderNoteList();
     renderTagFilters();
-    renderSearchResults();
+
     if (currentView === 'note-detail') renderNoteDetail();
+
       function renderOnThisDay() {
     const list = $('onthisday-list');
     const empty = $('onthisday-empty');
@@ -1884,6 +1891,7 @@ body {
       textSpan.textContent = e.text;
       textRow.appendChild(textSpan);
       contentWrapper.appendChild(textRow);
+
       
       if ((e.tags || []).length > 0) {
         const tagsDiv = document.createElement('div');
@@ -1976,7 +1984,9 @@ body {
       transferBtn.textContent = t('transfer');
       transferBtn.addEventListener('click', () => {
         e.status = 'transferred';
+
         notes.push({ id: uid(), text: e.text, time: e.time, date: e.date, starred: false, tags: [...(e.tags || [])] });
+
         saveData();
         actionsDiv.querySelectorAll('button').forEach(b => b.classList.add('decided'));
       });
@@ -2009,8 +2019,10 @@ body {
       })).filter(g => g.items.length > 0);
     }
 
+
     historyList.innerHTML = '';
     historyEmpty.classList.toggle('hidden', groups.length !== 0);
+
 
     const monthGroups = {};
     groups.forEach(g => {
@@ -2018,20 +2030,22 @@ body {
       if (!monthGroups[month]) monthGroups[month] = [];
       monthGroups[month].push(g);
     });
-
     const months = Object.keys(monthGroups).sort().reverse();
     months.forEach((month, monthIndex) => {
       const monthDiv = document.createElement('div');
       monthDiv.className = 'history-group';
+
 
       const header = document.createElement('div');
       header.className = 'collapse-header' + (monthIndex > 1 ? ' collapsed' : '');
       const parts = month.split('-');
       const y = parts[0], m = parseInt(parts[1]);
       const headerText = document.createElement('span');
+
       headerText.textContent = prefs.lang === 'zh'
         ? `${y}年${m}月`
         : `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]} ${y}`;
+
       const arrow = document.createElement('span');
       arrow.className = 'collapse-arrow';
       arrow.textContent = '▾';
@@ -2040,10 +2054,12 @@ body {
 
       const content = document.createElement('div');
       content.className = 'collapse-content' + (monthIndex > 1 ? ' collapsed' : '');
+
       header.addEventListener('click', () => {
         header.classList.toggle('collapsed');
         content.classList.toggle('collapsed');
       });
+
       monthDiv.appendChild(header);
 
       monthGroups[month].forEach(g => {
@@ -2074,6 +2090,7 @@ body {
           const itemDiv = document.createElement('div');
           itemDiv.className = 'history-item';
 
+
           if (batchMode.history) {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -2090,7 +2107,6 @@ body {
           const statusSpan = document.createElement('span');
           const cls = e.status === 'kept' ? 'kept' : (e.status === 'discarded' ? 'discarded' : 'transferred');
           statusSpan.className = 'history-status ' + cls;
-          statusSpan.textContent = t(e.status);
 
           const timeSpan = document.createElement('span');
           timeSpan.className = 'entry-time';
@@ -2123,11 +2139,13 @@ body {
           itemDiv.appendChild(timeSpan);
           itemDiv.appendChild(contentWrapper);
 
+
           if (e.starred) {
             const starBtn = document.createElement('button');
             starBtn.className = 'history-star-btn';
             starBtn.textContent = '★';
             starBtn.addEventListener('click', () => {
+
               e.starred = false;
               saveData();
               renderAll();
@@ -2315,6 +2333,7 @@ body {
             textDiv.className = 'note-text note-item-clickable';
             textDiv.textContent = n.text;
             textDiv.addEventListener('click', () => openNoteDetail(n.id));
+
             
             if ((n.tags || []).length > 0) {
               const tagsDiv = document.createElement('div');
@@ -2323,6 +2342,7 @@ body {
                 const tagBtn = document.createElement('button');
                 tagBtn.className = 'entry-tag';
                 tagBtn.textContent = tag;
+
                 tagBtn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   currentNoteTagFilter = tag; renderAll();
@@ -2381,6 +2401,7 @@ body {
     });
   }
 
+
   function openNoteDetail(id) {
     currentNoteDetailId = id;
     detailEditing = false;
@@ -2420,6 +2441,7 @@ body {
       tags.appendChild(tagEl);
     });
   }
+
 
   function renderSearchResults() {
     const query = searchInput.value.trim().toLowerCase();
@@ -2593,6 +2615,7 @@ body {
     onthisdayView.classList.add('hidden');
     fishView.classList.add('hidden');
     noteDetailView.classList.add('hidden');
+
     if (view === 'main') mainView.classList.remove('hidden');
     if (view === 'note') noteView.classList.remove('hidden');
     if (view === 'review') reviewView.classList.remove('hidden');
@@ -2631,7 +2654,9 @@ body {
   }
 
   function exportData() {
+
     localStorage.setItem('daily_bin_last_export', String(Date.now()));
+
     const data = JSON.stringify({ entries, notes }, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2772,6 +2797,7 @@ body {
     if (e.target === randomOverlay) randomOverlay.classList.add('hidden');
   });
 
+
   $('note-detail-back').addEventListener('click', () => showView('note'));
   $('note-detail-share').addEventListener('click', () => {
     const note = notes.find(n => n.id === currentNoteDetailId);
@@ -2838,6 +2864,7 @@ body {
   function generateShareImage(type, data) {
     const canvas = $('share-canvas');
     const ctx = canvas.getContext('2d');
+
     const W = 1080;
     const isDark = prefs.theme === 'dark';
     const colors = {
@@ -3052,11 +3079,12 @@ body {
     // 把画布内容输出为图片，交给 <img> 显示（原生长按即可保存）
     shareImage.src = canvas.toDataURL('image/png');
 
-    // 显示弹窗
+
     $('share-overlay').classList.remove('hidden');
   }
   
-  // 木鱼音效
+
+
   let audioCtx = null;
   function vibrateLight() {
     try {
@@ -3149,6 +3177,7 @@ body {
     if (unreviewed.length === 0) return;
     
     const msg = prefs.lang === 'zh' 
+
       ? `昨日有 ${unreviewed.length} 条未清点` 
       : `You have ${unreviewed.length} unreviewed items from yesterday.`;
 
@@ -3228,6 +3257,7 @@ body {
     document.body.appendChild(overlay);
   }
 
+
   // ========== 初始化 ==========
   loadPrefs();
   loadData();
@@ -3241,6 +3271,7 @@ body {
   showZen();
   checkYesterdayUnreviewed();
   checkBackupReminder();
+
   
   // ========== 批量编辑事件绑定 ==========
   function bindBatchEvents() {
